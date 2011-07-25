@@ -1,0 +1,217 @@
+html {
+  background-color: #484848;
+  padding: 0px 30px;
+  height: 101%; /* 101 keeps the scroll bar always present to avoid ltr jumping */
+}
+
+body {
+  background-color: #FFF;
+
+  width: 800px;
+  min-height: 100%;
+  padding: 0;
+  margin: 0 auto;
+
+  color: #333;
+  font-size: 13px;
+  font-family: arial, sans-serif;
+  line-height: 18px;
+}
+
+body strong { color: #222222 }
+a:link { color: #1155CC }
+a:visited { color: #6611CC }
+a:active { color: #D14836 }
+
+#title {
+  background-color: #F5F5F5;
+  border-bottom: 1px solid #E5E5E5;
+
+  color: #D14836;
+  font-size: 20px;
+  font-weight: normal;
+}
+
+#navbar {
+  padding: 8px 30px;
+  background-color: #FFF;
+}
+
+/* default for text-only pages */
+
+p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+ul {
+  margin-top: 4;
+  margin-bottom: 0;
+}
+
+.brandname {
+  font-variant: small-caps;
+  font-size: 125%;
+}
+
+/* form page (shitty submit page) */
+
+form {
+  display: table;
+}
+input {
+  width: 200px;
+  margin: 0.3em;
+}
+
+/* Highlighted lists page: ui containers */
+
+#title, .lineerror, .linenote, .simple {
+  margin: 0;
+  padding: 21px 30px;
+}
+
+.simplecompact {
+  margin: 0;
+  padding: 4px 30px;
+  background: #F5F5F5;
+  border-bottom: 1px solid #E5E5E5;
+  border-top: 1px solid #E5E5E5;
+}
+
+.linehover, .linenohover {
+  margin: 0;
+  padding: 4px 30px;
+}
+
+.linehover:hover {
+  background-color: #F9EDBE;
+}
+
+.linenote, .linenote strong {
+  color: #666;
+}
+
+/* Highlighted lists page: layout */
+/* list page and friend page */
+
+.col-amount, .col-face, .col-annotation, .col-status {
+  height: 50px;
+  /* changes to this should also change picture size */
+}
+.col-amount { 
+  width: 150px;
+}
+.col-desc {
+  width: 250px;
+  padding-right: 10px;
+}
+.col-face {
+  width: 40px;
+}
+.col-annotation {
+  width: 220px;
+  padding-left: 10px;
+}
+.col-paidbutton {
+  width: 50px;
+  padding-right: 10px;
+}
+
+.horizontalbox {
+  width: 740px;
+  display: box;
+  display: -webkit-box;
+  box-orient: horizontal;
+  -webkit-box-orient: horizontal;
+}
+
+.verticalbox {
+  display: box;
+  display: -webkit-box;
+  box-orient: vertical;
+  -webkit-box-orient: vertical;
+}
+
+.innerbox {
+  display: box;
+  display: -webkit-box;
+  box-flex: 1;
+  -webkit-box-flex: 1;
+}
+
+.innerspacer {
+  box-flex: 1000;
+  -webkit-box-flex: 1000;
+}
+
+/* Highlighted lists page: specific div units */
+
+.amount {
+  font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
+  font-size: 20px;
+}
+
+.currency {
+  font-variant: small-caps;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.picture {
+  background-color: #F5F5F5;
+  background-repeat: no-repeat;
+
+  padding: 0;
+  margin: 5px 0 5px 0;
+  height: 40px;
+  width: 40px;
+
+  border-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+.secondary {
+  color: #666;
+  font-size: 11px;
+}
+
+.infotext, .secondary {
+  padding: 1px 0 1px 0px;
+  margin: 0;
+  /* height should be 18px: 16+1+1 */
+}
+
+.infotext a:link, .infotext a:visited {
+  color: #333;
+  text-decoration: none;
+}
+.infotext a:hover {
+  color: #D14836;
+  text-decoration: none;
+}
+
+.icon {
+  padding: 0;
+  margin: 2px 6px 0px 0px;
+  height: 13px;
+  width: 13px;
+
+  border-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+.yes {
+  background-color: #50C25B;
+}
+
+.maybe {
+  background-color: #666;
+}
+.maybetext {
+  color: #666;
+}
+
+.no {
+  background-color: #D14836;
+}

@@ -1,0 +1,14 @@
+nicer html emails, finish email integration
+per-user splitting and sending
+better send UI, client side input validation and preview (frontend shit)
+
+handle DeadlineExceededError: ApplicationError: 5 timed out
+resync after uncaught exceptions
+clear all and resync admin function a?clear
+sync as a background task queue for new signups
+sync as a cron job for existing seller accounts
+user merge tool (allow me to specify zpm@ and zach.maier@ are the same person)
+facebook auto-picture download - no idea how this should work
+
+android app
+ios app
