@@ -1,0 +1,7 @@
+indexes:
+
+- kind: PurchaseRecord
+  properties:
+  - name: SPMUser_seller
+  - name: date_latest
+    direction: desc

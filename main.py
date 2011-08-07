@@ -10,6 +10,7 @@ import string # for ascii_lowercase (testing only)
 import time
 
 from google.appengine.ext import db
+from google.appengine.api import taskqueue # for checkout sync requests
 from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
@@ -84,8 +85,9 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
     text_seller = SPMUser_to_show.name
     if not text_seller:
       text_seller = text_email
-    url_seller_picture = SPMUser_to_show.picture_url
-    if not url_seller_picture:
+    if SPMUser_to_show.facebook_id:
+      url_seller_picture = 'http://graph.facebook.com/' + SPMUser_to_show.facebook_id + '/picture?square'
+    else:
       url_seller_picture = ''
   else:
     logging.critical('SPMUser object is none.')
@@ -122,7 +124,8 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
     else:
       # in this case we don't have a payment date and we don't have a spm_name
       # record indicating this was created by us.  This should never happen.
-      logging.critical('Impossible situation.  Wtf.')
+      logging.critical('Impossible situation.  Wtf.  Key=' + str(record.key()) + 
+        ' Description=' + record.description)
       pass
 
   text_desc = 'Description unknown'
@@ -140,10 +143,10 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
     text_currency = '$'
 
   text_paynow = ''
-  if record.checkout_payurl:
+  if record.checkout_payurl and not record.date_paid:
     text_paynow = '<a href="' + record.checkout_payurl + '">Pay now</a>'
 
-  if c14n_url and record.date_sent and linkify:
+  if c14n_url and linkify:
     div_linestyle = '<div class="linehover" onclick="location.href=\'' + c14n_url + '\'">'
   else:
     div_linestyle = '\t<div class="linenohover">' 
@@ -198,32 +201,6 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
   return outbuf
 
 
-def ReserveNextSerialsTransaction(spm_name, number_to_reserve):
-  """ Run this function as a transaction.  Reserves the next serial numbers."""
-
-  count_record = None
-  count_records = db.GqlQuery(
-    'SELECT * FROM CountStore WHERE ANCESTOR IS :1',
-    db.Key.from_path('CountURL', spm_name)
-  ).fetch(limit=2)
-  if len(count_records) == 1:
-    count_record = count_records[0]
-  elif len(count_records) >= 2:
-    logging.critical('More than one record returned from ancestor query')
-
-  if count_record:
-    cur_count = count_record.url_count
-    count_record.url_count = cur_count + number_to_reserve
-    count_record.put()
-    return cur_count
-  else:
-    new_record = spmdb.CountStore(
-      parent = db.Key.from_path('CountURL', spm_name),
-      url_count = number_to_reserve
-    )
-    new_record.put()
-    return 0
-
 
 ################################################################################
 
@@ -262,26 +239,43 @@ class AppPage_Admin(webapp.RequestHandler):
     print query
 
     sync_value = long(self.request.get('sync'))
+    if not sync_value:
+      sync_value = 180
     if sync_value:
-      print 'Synced ' + str(sync_value)
+      print 'Starting background task to sync ' + str(sync_value) + ' days.'
       # TODO: move this to a background cron job or user-facing button
-      right_now = datetime.utcnow() + timedelta(minutes = -6)      
-      if spm_loggedin_user.checkout_last_sync:
-        start_time = spm_loggedin_user.checkout_last_sync
-      else:
-        start_time = right_now + timedelta(days = (sync_value*-1))
-      print start_time
-      print right_now
-      if start_time < right_now:
-        # TODO: add checkout validity checks
-        print 'running'
-        checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
-        checkout.GetHistory(
-          utc_start = start_time,
-          utc_end = right_now
-        )
-      else:
-        print 'not run'
+      taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
+        'user_key': spm_loggedin_user.key(),
+        'sync_value': sync_value,
+      })
+
+
+class TaskPage_SyncCheckout(webapp.RequestHandler):
+  """Runs sync checkout in the background."""
+
+  def post(self):
+
+    user_key = self.request.get('user_key')
+    spm_user_to_run = db.get(user_key)
+    sync_value = long(self.request.get('sync_value'))
+    
+    logging.debug('Task SyncCheckout user_key ' + user_key)
+    logging.debug('Task SyncCheckout sync_value ' + str(sync_value))
+
+    if not spm_user_to_run or not sync_value:
+      return
+
+    right_now = datetime.utcnow() + timedelta(minutes = -6)      
+    if spm_user_to_run.checkout_last_sync:
+      start_time = spm_user_to_run.checkout_last_sync
+    else:
+      start_time = right_now + timedelta(days = (sync_value*-1))
+    if start_time < right_now:
+      checkout = spmcheckout.CheckoutSellerIntegration(spm_user_to_run)
+      checkout.GetHistory(
+        utc_start = start_time,
+        utc_end = right_now
+      )
 
 
 class AppPage_Default(webapp.RequestHandler):
@@ -307,6 +301,34 @@ class AppPage_Default(webapp.RequestHandler):
 class AppPage_Send(webapp.RequestHandler):
   """Login required."""
 
+
+  def ReserveNextSerialsTransaction(self, spm_name, number_to_reserve):
+    """ Run this function as a transaction.  Reserves the next serial numbers."""
+
+    count_record = None
+    count_records = db.GqlQuery(
+      'SELECT * FROM CountStore WHERE ANCESTOR IS :1',
+      db.Key.from_path('CountURL', spm_name)
+    ).fetch(limit=2)
+    if len(count_records) == 1:
+      count_record = count_records[0]
+    elif len(count_records) >= 2:
+      logging.critical('More than one record returned from ancestor query')
+
+    if count_record:
+      cur_count = count_record.url_count
+      count_record.url_count = cur_count + number_to_reserve
+      count_record.put()
+      return cur_count
+    else:
+      new_record = spmdb.CountStore(
+        parent = db.Key.from_path('CountURL', spm_name),
+        url_count = number_to_reserve
+      )
+      new_record.put()
+      return 0
+
+
   def __init__(self):
     self._TITLE = SPM + ' now'
 
@@ -324,13 +346,18 @@ class AppPage_Send(webapp.RequestHandler):
 """<form action="%(posturl)s" method="post">
   <div>Hey!  You owe me money.</div>
   <div>So, pay me for <input type="text" name="url" value=""/> (no spaces or symbols)</div>
-  <div>I'll be needing $ <input type="text" name="amount" value=""/></div>
   <div>And in case you don't remember what I'm talking about,<br/>
   here are a few more details to jog your memory:</div>
   <div><input type="text" name="description" value=""/></div>
   <div>&nbsp;</div>
-  <div>Send to (comma separated emails):</div>
-  <div><input type="text" name="email" value=""/></div>
+  <div>$ <input type="text" name="amount0" value=""/> to <input type="text" name="email0" value=""/></div>
+  <div>$ <input type="text" name="amount1" value=""/> to <input type="text" name="email1" value=""/></div>
+  <div>$ <input type="text" name="amount2" value=""/> to <input type="text" name="email2" value=""/></div>
+  <div>$ <input type="text" name="amount3" value=""/> to <input type="text" name="email3" value=""/></div>
+  <div>$ <input type="text" name="amount4" value=""/> to <input type="text" name="email4" value=""/></div>
+  <div>$ <input type="text" name="amount5" value=""/> to <input type="text" name="email5" value=""/></div>
+  <div>$ <input type="text" name="amount6" value=""/> to <input type="text" name="email6" value=""/></div>
+  <div>$ <input type="text" name="amount7" value=""/> to <input type="text" name="email7" value=""/></div>
   <div>&nbsp;</div>
   <div><input type="submit" value="Send Email" /></div>
 </form>"""
@@ -373,8 +400,13 @@ class AppPage_Send(webapp.RequestHandler):
 
     form_url = cgi.escape(self.request.get('url'))
     form_description = cgi.escape(self.request.get('description'))
-    form_amount = cgi.escape(self.request.get('amount'))
-    form_email = cgi.escape(self.request.get('email'))
+
+    form_amount_email_pairs = []
+    for i in range(0,7):
+      cur_amount = cgi.escape(self.request.get('amount' + str(i)))
+      cur_email = cgi.escape(self.request.get('email' + str(i)))
+      if cur_amount and cur_email:
+        form_amount_email_pairs.append((float(cur_amount), cur_email.strip()))
 
     # url must be a-z, 0-9... no spaces or characters
     if not form_url.isalnum():
@@ -391,40 +423,35 @@ class AppPage_Send(webapp.RequestHandler):
     else:
       newcr_description = str(form_description)
 
-    # needs to be numbers or decimals
-    if not form_amount:
-      logging.debug('FormValidator: Amount failed')
-      return
-      # TODO: user-facing notification in this case
-    else:
-      newcr_amount = float(form_amount)
-
     # simple validation, doesn't catch everything but works for the 99% use case
     _EMAIL_REGEX = '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$'
-    if not form_email:
-      logging.debug('FormValidator: Email address empty')
-      return
-      # TODO: user-facing notification in this case
-    else:
-      all_form_emails = form_email.split(',')
-      logging.debug(all_form_emails)
-      clean_emails = []
-      for email in all_form_emails:
-        email = email.strip()
-        # this is weird, why can I not edit this in place
-        if not re.search(_EMAIL_REGEX, email):
+
+    # needs to be numbers or decimals
+    for form_amount, form_email in form_amount_email_pairs:
+
+      if not form_amount:
+        logging.debug('FormValidator: Amount failed')
+        return
+        # TODO: user-facing notification in this case
+
+      if not form_email:
+        logging.debug('FormValidator: Email address empty')
+        return
+        # TODO: user-facing notification in this case
+      else:
+        if not re.search(_EMAIL_REGEX, form_email):
           logging.debug('FormValidator: Email address failed regex: ' + email)
           return
-        else:
-          clean_emails.append(email)
 
     ##### create records and checkout urls for this #####
     
     # reserve id for this
-    reserved_url_serial = db.run_in_transaction(ReserveNextSerialsTransaction, newcr_spm_name, 1)
+    reserved_url_serial = db.run_in_transaction(
+      self.ReserveNextSerialsTransaction, newcr_spm_name, 1
+    )
 
     item_count = 0
-    for email in clean_emails:
+    for newcr_amount, email in form_amount_email_pairs:
 
       new_pr = spmdb.PurchaseRecord(
         parent = MakeAncestorFromSPMUser(spm_loggedin_user),
@@ -433,7 +460,7 @@ class AppPage_Send(webapp.RequestHandler):
       new_pr.spm_name = newcr_spm_name
       new_pr.spm_serial = reserved_url_serial
       new_pr.spm_transaction = item_count
-      new_pr.amount = '%0.2f' % newcr_amount
+      new_pr.amount = '%0.2f' % float(newcr_amount)
       new_pr.currency = 'USD'
       new_pr.description = newcr_description
       new_pr.date_sent = datetime.utcnow()
@@ -454,6 +481,7 @@ class AppPage_Send(webapp.RequestHandler):
         amount = new_pr.amount,
         currency = new_pr.currency,
       )
+      new_pr.checkout_payurl = checkout_payurl
 
       if not checkout_payurl:
         logging.critical('New invoice: GetPaymentUrl failed')
@@ -472,10 +500,16 @@ class AppPage_Send(webapp.RequestHandler):
       emailer.SendEmail(
         to_name = spm_to_user.name,
         to_email = email,
+        spm_for = newcr_spm_name,
+        spm_url = BuildSPMURL(
+          name = new_pr.spm_name,
+          serial = new_pr.spm_serial,
+        ),
+        pay_url = checkout_payurl,
+        description = newcr_description
       )
 
       # commit record - do this last in case anything above fails
-      new_pr.checkout_payurl = checkout_payurl
       new_pr.put()
 
       # iterate item count for next thing
@@ -508,7 +542,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     ##### preprocessing before rendering page #####
 
     # query as an iterable instead of fetch so we get all the records
-    # TODO: implement paging (note for paging 
+    # TODO: implement paging
     records = db.GqlQuery(
       'SELECT * FROM PurchaseRecord '
       'WHERE SPMUser_seller = :1 '
@@ -519,21 +553,20 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     _OTHER_DIVIDER_LINE = '<div class="simplecompact">For other things (invoices not sent with sopay.me)</div>'
     _RECORD_DIVIDER_LINE = '<div class="simplecompact">For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)</div>'
 
-    # group the records into a dict of lists keyed off of url; to be considered
+    # group the records into a dict of lists keyed off of url. to be considered
     # in a grouping, the record must have a c14n url and a valid date_sent set,
-    # otherwise stick the shit into the 'other things' category
+    # otherwise stick it into the 'other things' category cause it wasn't sent
+    # using sopay.me
     sort_buckets = {}
     time_sort = []
     for record in records:
       key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
-      if not key_url or not record.date_sent:
+      if not key_url:
         key_url = _OTHER_DIVIDER_LINE
       else:
-        # make url look prettier for indexing and display ( ''/'for'/'blue'/'000' )
-        url_split = key_url.split('/')
         key_url = _RECORD_DIVIDER_LINE % ({
-          'forpart': url_split[2], 
-          'serialpart': url_split[3],
+          'forpart': record.spm_name, 
+          'serialpart': record.spm_serial,
         })
       try:
         sort_buckets[key_url]
@@ -542,7 +575,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       sort_buckets[key_url].append(record)
 
     # sort this list by the most recent update in each of the buckets, but
-    # always sort 'other' last (these are things not sent with spm)
+    # always sort 'other' last (these are the things not sent with spm)
     list_to_sort = []
     for url in sort_buckets.keys():
       date_max = datetime(1985,9,17)
@@ -561,7 +594,11 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       'more_header': '',
     })
     outbuf.append(_PAGE_INLINENOTE % {
-      'message': 'Payment updates from Google Checkout may take up to an hour to appear.'
+      'message': (
+        'Payment updates from Google Checkout may take up to an hour to appear. '
+        '<a href="/a?sync=180">Refresh the last 180 days now.</a>'
+        # TODO: remove this message when sync gets moved to cron
+      )
     })
 
     # render the records
@@ -603,10 +640,6 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       self.redirect(c14n_url, permanent=True)
       return
     self._TITLE = SPM + ' for ' + parsed_url['name']
-
-    ##### start pre-work to render page #####
-
-
 
     ##### start rendering page #####
 
@@ -651,6 +684,8 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 
 
 application = webapp.WSGIApplication([
+  # Background task queues
+  ('/task/checkout', TaskPage_SyncCheckout),
   # User-facing functional pages
   #('/connections', AppPage_Connections),
   ('/a', AppPage_Admin),

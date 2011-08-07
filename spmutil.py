@@ -155,7 +155,7 @@ def ParseSPMID(spmid, relpath=False):
   return return_value
 
 
-def BuildSPMURL(name, serial, transaction=None, relpath=False):
+def BuildSPMURL(name, serial, relpath=False):
 
   if name == None or serial == None:
     return None

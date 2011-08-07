@@ -8,7 +8,7 @@ class SPMUser(db.Model):
 
   name = db.StringProperty()
   email = db.StringProperty()
-  picture_url = db.StringProperty()
+  facebook_id = db.StringProperty()
   
   checkout_verified = db.BooleanProperty()
   checkout_last_sync = db.DateTimeProperty()

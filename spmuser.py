@@ -85,7 +85,7 @@ class UserManager():
         spm_user.google_account = google_account
         spm_user.name = 'Zach Maier'
         spm_user.email = 'zach.maier@gmail.com'
-        spm_user.picture_url = 'http://graph.facebook.com/zach.maier/picture?square'
+        spm_user.facebook_id = 'zach.maier'
       
         spm_user.checkout_verified = True
         spm_user.checkout_merchant_id = '376921204623793'

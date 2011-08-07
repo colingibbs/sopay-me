@@ -12,43 +12,22 @@ class SPMEmailManager():
     self.from_name = from_name
 
 
-  def ConstructEmailText(self, to_name):
-    """A separate construct public function for previewing."""
-
-    _EMAIL_TEXT = \
-"""Hey %(to_name)s,
-
-%(from_name)s says sopay.me!
-
-- the sopay.me team
-"""
-
-    return _EMAIL_TEXT % ({
-      'to_name': to_name,
-      'from_name': self.from_name,
-    })
-
-
-  def ConstructEmailHTML(self, to_name):
-    """A separate construct public function for previewing."""
+  def SendEmail(self, to_name, to_email, spm_for, spm_url, pay_url, description):
 
     _EMAIL_HTML = \
-"""<html><head></head><body>
-Hey %(to_name)s,
-
-%(from_name)s says sopay.me!
-
-- the sopay.me team
-</body>
+"""Hey %(to_name)s,<br/>
+<br/>
+%(from_name)s says "so pay me for %(spm_for)s!"<br/>
+<br/>
+%(desc)s<br/>
+<br/>
+<a href="%(pay_url)s">Pay now</a> using Google checkout.<br/>
+<br/>
+Or check out who else has paid at <a href="%(spm_url)s">%(spm_url)s</a><br/>
+<br/>
+Thanks,<br/>
+- the sopay.me team<br/>
 """
-
-    return _EMAIL_HTML % ({
-      'to_name': to_name,
-      'from_name': self.from_name,
-    })
-
-
-  def SendEmail(self, to_name, to_email):
 
     if not to_name:
       to_name = ''
@@ -58,12 +37,22 @@ Hey %(to_name)s,
 
     to_string = to_name + ' <' + to_email + '>'
 
+    html_message = _EMAIL_HTML % ({
+      'to_name': to_name,
+      'from_name': self.from_name,
+      'spm_for': spm_for,
+      'spm_url': spm_url,
+      'pay_url': pay_url,
+      'desc': description,
+    })
+
     message = mail.EmailMessage(
       sender = self.sender_string,
       to = to_string,
       subject = self.from_name + ' says sopay.me!',
-      body = self.ConstructEmailText(to_name),
-      html = self.ConstructEmailHTML(to_name),
+      html = (
+        '<html><head></head><body>' + html_message + '</body>'
+      )
     )
 
     message.send()

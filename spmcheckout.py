@@ -213,8 +213,10 @@ class CheckoutSellerIntegration:
 
 
 
-      # if there's not yet a valid record but there is a valid spm name/serial, try
-      # looking up based on that valid spm name/serial... if checkout key is
+      # if there's not yet valid record but there is a valid spm_name/serial/transaction,
+      # then try looking up based on that valid spm name/serial
+      
+      #if the checkout_key is
       # empty, then good... if not, then this is a duplicate of the same spm name/serial, 
       # so don't do anything and let the default creation flow run below...
       parsed_id = ParseSPMID(noteinfo_private_data)
@@ -229,24 +231,29 @@ class CheckoutSellerIntegration:
         if len(existing_records) == 1:
           # ensure that this record isn't earmarked to be paid by someone else
           # before we update it with this payment
+          logging.debug('Matched spm_name/serial/transaction.')
+          logging.debug(noteinfo_checkout_buyer_email)
+          logging.debug(noteinfo_amount)
+          logging.debug(noteinfo_currency)
+          logging.debug(noteinfo_description)
           if existing_records[0].SPMUser_buyer:
             # match this record using our criteria
-            logging.debug('Trying this')
-            logging.debug(existing_records[0].SPMUser_buyer.email_list)
-            logging.debug(noteinfo_checkout_buyer_email)
+            logging.debug('Trying to update...')
+            logging.debug(existing_records[0].SPMUser_buyer.email)
             logging.debug(existing_records[0].amount)
-            logging.debug(noteinfo_amount)
             logging.debug(existing_records[0].currency)
-            logging.debug(noteinfo_currency)   
             logging.debug(existing_records[0].description)
-            logging.debug(noteinfo_description)
-            if noteinfo_checkout_buyer_email in existing_records[0].SPMUser_buyer.email_list:
-              if existing_records[0].amount == noteinfo_amount:
+            if noteinfo_checkout_buyer_email in existing_records[0].SPMUser_buyer.email:
+              # check float() to catch enter 1.00 return 1.0
+              if float(existing_records[0].amount) == float(noteinfo_amount):
                 if existing_records[0].currency == noteinfo_currency:
                   if existing_records[0].description == noteinfo_description:
                     pr = existing_records[0]
-            else:
-              pr = None # and follow creation flow below
+                    logging.debug('Updated.')
+            if not pr:
+              # this case means that the name/serial/transaction matched, but one
+              # of the other details didn't match.  So we just create a new record
+              logging.debug('Not updated.')
           else:
             pr = existing_records[0]
         elif len(existing_records) >= 2:
