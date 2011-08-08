@@ -17,6 +17,19 @@ class SPMUser(db.Model):
   
   last_login = db.DateTimeProperty()
 
+  def __str__(self):
+    string = ''
+    string += 'google_account           [' + strEmpty(self.google_account) + ']\n'
+    string += 'name                     [' + strEmpty(self.name) + ']\n'
+    string += 'email                    [' + strEmpty(self.email) + ']\n'
+    string += 'facebook_id              [' + strEmpty(self.facebook_id) + ']\n'
+    string += 'checkout_verified        [' + strEmpty(self.checkout_verified) + ']\n'
+    string += 'checkout_last_sync       [' + strEmpty(self.checkout_last_sync) + ']\n'
+    string += 'checkout_merchant_id     [' + strEmpty(self.checkout_merchant_id) + ']\n'
+    string += 'checkout_merchant_secret [' + strEmpty(self.checkout_merchant_secret) + ']\n'
+    string += 'last_login               [' + strEmpty(self.last_login) +  ']\n'
+    return string
+
 
 class PurchaseRecord(db.Model):
 
@@ -67,3 +80,10 @@ class CountStore(db.Model):
 
   # created using 'fake' parent keyed off of spm_name
   url_count = db.IntegerProperty(required = True)
+
+
+def strEmpty(string):
+  if string:
+    return str(string)
+  else:
+    return ''

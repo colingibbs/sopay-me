@@ -53,11 +53,10 @@ class UserManager():
     return spm_user
 
 
-  def GetSPMUserByLoggedInGoogleAccount(self, create_new = True):
+  def GetSPMUserByLoggedInGoogleAccount(self, google_account, create_new = True):
     """TODO"""
 
     # google accounts login check
-    google_account = users.get_current_user()
     if not google_account:
       return None
 
@@ -68,43 +67,24 @@ class UserManager():
 
     if len(userlist) == 1:
       spm_user = userlist[0]
+
     elif len(userlist) == 0 and create_new:
       # check to see if we already have an implicit account with that address,
       # and if not, just create one with that address
       logging.info('Using implicit login to create new account: ' + google_account.email())
       spm_user = self.GetSPMUserByEmail(google_account.email(), create_new = True)
 
-
-      
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-      # used for testing locally on zach's desktop
-      if google_account.email() == 'zach.maier@gmail.com':
-        # TODO remove this hack to create Zach's seller profile
-
-        logging.critical('Creating hacky zach profile')
-        spm_user.google_account = google_account
-        spm_user.name = 'Zach Maier'
-        spm_user.email = 'zach.maier@gmail.com'
-        spm_user.facebook_id = 'zach.maier'
-      
-        spm_user.checkout_verified = True
-        spm_user.checkout_merchant_id = '376921204623793'
-        spm_user.checkout_merchant_secret = 'hDHbxn1lULXn7pd6AK0BBA'
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-
-
-      else:
-        logging.info('Linking google account to existing SPMUser: ' + google_account.email())
-        spm_user.google_account = google_account
-      
-      spm_user.put()
-
     elif len(userlist) == 0 and not create_new:
       logging.debug('Choosing not to create user, returning None')
+
     else:
       logging.critical('Query returned more than one google_account.')
   
     if spm_user:
+      # make sure google account is linked
+      if not spm_user.google_account:
+        logging.info('Linking google account to existing SPMUser: ' + google_account.email())
+        spm_user.google_account = google_account
       spm_user.last_login = datetime.utcnow()
       spm_user.put()
   

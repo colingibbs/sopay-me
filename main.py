@@ -27,28 +27,47 @@ from spmutil import *
 ################################################################################
 
 
-class AdminPage_Main(webapp.RequestHandler):
+class AppPage_Debug(webapp.RequestHandler):
+
 
   def __init__(self):
-    self._TITLE = 'admin'
+    self._TITLE = 'debug'
+
 
   def get(self):
+    """Publicly visible debug page.  Make sure requests here are limited to current user."""
 
-    # login required
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
     if not spm_loggedin_user:
       self.redirect('/')
       return
-      
-    # admin check taken care of in app.yaml
 
+    ### always print ###
+
+    pp = pprint.PrettyPrinter()
     outbuf = ['<body><pre>']
+    outbuf.append('Path      [' + self.request.path + ']')
+    outbuf.append('Query     [' + self.request.query + ']')
+    outbuf.append('User Key  [' + str(spm_loggedin_user.key()) + ']')
+    outbuf.append('\n===USER===\n')
+    outbuf.append(str(spm_loggedin_user))
+    outbuf.append('===USER===')
+    outbuf.append('\nFYI, valid paths are:')
+    outbuf.append('  /debug/force?days=1 to force a checkout sync')
+    outbuf.append('  /debug/dump?days=1 to see raw checkout api response')  
 
-    outbuf.append('Path  [' + self.request.path + ']')
-    outbuf.append('Query [' + self.request.query + ']')
+    ### functional things ###
 
-    if self.request.path == '/admin/force':
+    if self.request.path == '/debug/force':
       sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 180
@@ -61,7 +80,7 @@ class AdminPage_Main(webapp.RequestHandler):
         'sync_value': sync_value,
       })
   
-    elif self.request.path == '/admin/dump':
+    elif self.request.path == '/debug/dump':
       sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 1
@@ -75,7 +94,6 @@ class AdminPage_Main(webapp.RequestHandler):
           utc_start = start_time,
           utc_end = right_now
         )
-      pp = pprint.PrettyPrinter()
       outbuf.append(pp.pformat(history))
   
     outbuf.append('</pre></body>')
@@ -86,7 +104,7 @@ class AdminPage_Main(webapp.RequestHandler):
 
 
 class TaskPage_SyncCheckout(webapp.RequestHandler):
-  """Runs sync checkout in the background."""
+  """Runs sync checkout in the background.  Admin only access (app.yaml)"""
 
   def post(self):
 
@@ -111,7 +129,7 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
 
 
 class TaskPage_SyncCron(webapp.RequestHandler):
-  """Runs sync checkout in the background for all users with checkout_verified."""
+  """Runs sync checkout in the background for all users with checkout_verified.  Admin only access (app.yaml)"""
 
   def get(self):
 
@@ -152,8 +170,18 @@ class AppPage_Default(webapp.RequestHandler):
   def get(self):
     """Returns main page."""
 
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
+
+    ### render page ###
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
@@ -170,7 +198,7 @@ class AppPage_Default(webapp.RequestHandler):
 
 
 class AppPage_Send(webapp.RequestHandler):
-  """Login required."""
+  """Checkout account required."""
 
 
   def __ReserveNextSerialsTransaction(self, spm_name, number_to_reserve):
@@ -206,12 +234,21 @@ class AppPage_Send(webapp.RequestHandler):
 
   def get(self):
 
-    # login required
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
-    if not spm_loggedin_user:
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
+    if not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
+
+    ### render page ###
 
     _PAGE_CONTENT = \
 """<form action="%(posturl)s" method="post">
@@ -246,19 +283,21 @@ class AppPage_Send(webapp.RequestHandler):
   def post(self):
     """Takes a HTML form post and creates a new expense"""
 
-    # TODO: convert to JS/JSON with client side validation logic too
+    ##### identity #####
 
-    # login required
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
-    if not spm_loggedin_user:
-      self.redirect('/')
-      return
-
-    # seller bit required
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
     if not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
+
+    # TODO: convert to JS/JSON with client side validation logic too
 
     ##### form content validation #####
 
@@ -355,6 +394,8 @@ class AppPage_Send(webapp.RequestHandler):
       # send email
       if spm_loggedin_user.name:
         sender_name = spm_loggedin_user.name
+      else:
+        sender_name = ''
       emailer = spmemail.SPMEmailManager(
         from_name = sender_name,
         # have to use logged-in users email address or appengine won't send
@@ -389,7 +430,7 @@ class AppPage_Send(webapp.RequestHandler):
 
 
 class AppPage_PaymentHistory(webapp.RequestHandler):
-  """Login required"""
+  """Checkout account required."""
 
   def __init__(self):
     self._TITLE = SPM + ' everything'
@@ -397,10 +438,17 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
 
   def get(self):
 
-    # login required
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
-    if not spm_loggedin_user:
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
+    if not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
 
@@ -481,10 +529,21 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
   def get(self):
     """TODO"""
 
-    um = spmuser.UserManager()
-    spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUserByLoggedInGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      sudo_as = self.request.get('sudo')
+      if sudo_as:
+        sudo_user = user_manager.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
 
     # TODO: acl'ed payments
+    # if not spm_loggedin_user.checkout_verified:
+    #  self.redirect('/')
+    #  return
 
     ##### preprocessing before rendering page #####
 
@@ -542,9 +601,8 @@ application = webapp.WSGIApplication([
   # Background task queues
   ('/task/checkout', TaskPage_SyncCheckout),
   ('/task/synccron', TaskPage_SyncCron),
-  # Admin access only
-  ('/admin/.*', AdminPage_Main),
   # User-facing
+  ('/debug.*', AppPage_Debug),
   ('/now', AppPage_Send),
   ('/everything', AppPage_PaymentHistory),
   ('/signout.*', AppPage_SignoutRedirect),
