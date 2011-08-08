@@ -195,7 +195,7 @@ class NewPage():
     </div>
     <div class="boxl-vparent boxl-content col-face">
       <div class="boxl-spacer"></div>
-      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\';"></div>
+      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\');"></div>
       <div class="boxl-spacer"></div>
     </div>
     <div class="boxl-vparent boxl-content col-annotation">
@@ -217,7 +217,7 @@ class NewPage():
   <div class="boxl-hparent">
     <div class="boxl-vparent boxl-content col-mobileleft">
       <div class="boxl-spacer"></div>
-      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\';"></div>
+      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\');"></div>
       <div class="boxl-spacer"></div>
     </div>
     <div class="boxl-vparent boxl-content col-mobileright">
