@@ -29,39 +29,14 @@ from spmutil import *
 _PRETTY_TIME = '%B %d'
 _YMD_TIME = '%Y-%m-%d'
 
-_CHECKOUT_UTC_FORMATTER = '%Y-%m-%dT%H:%M:%S.%fZ' # TODO(zpm) this needs to go away
-
-_PAGE_HEADER = \
-"""<!DOCTYPE HTML>
-<html>
-<head>
-\t<meta http-equiv="content-type" content="text/html; charset=utf-8">
-\t<title>%(title)s</title>
-\t<link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
-%(more_header)s
-</head>
-<body>
-\t<div id="title">%(title)s</div>"""
-
 _PAGE_INLINEERROR =\
 """<div class="lineerror"><strong>ERROR:</strong> %(message)s</div>"""
 
-_PAGE_INLINENOTE =\
-"""<div class="linenote"><strong><em>NOTE:</em></strong> %(message)s</div>"""
+_PAGE_INsimple =\
+"""<div class="simple"><strong><em>NOTE:</em></strong> %(message)s</div>"""
 
 _PAGE_INLINE =\
-"""<div class="linenote">%(message)s</div>"""
-
-_PAGE_FOOTER = \
-"""</body>
-<!-- Copyright 2011 -->"""
-
-_CHECKOUT_BUTTON_HTML = \
-"""<div class="simple" style="text-align: center;">
-<br/><br/>
-<a href="%(button_url)s"><img src="/static/checkout.gif" /></a>
-<br/><br/>
-</div>"""
+"""<div class="simple">%(message)s</div>"""
 
 pp = pprint.PrettyPrinter(indent=1)
 
@@ -69,7 +44,56 @@ pp = pprint.PrettyPrinter(indent=1)
 ################################################################################
 
 
-def CreateHoverLine(record, SPMUser_to_show, linkify):
+def IsMobile(useragent):
+  if 'android' in useragent.lower() or 'iphone' in useragent.lower():
+    return True
+  else:
+    return False
+
+
+def CreateHeader(title, useragent):
+
+  _PAGE_HEADER = \
+"""<!DOCTYPE HTML>
+<html>
+<head>
+\t<meta http-equiv="content-type" content="text/html; charset=utf-8">
+\t<title>%(title)s</title>
+\t<link rel="stylesheet" type="text/css" href="%(css)s" />
+%(additional)s
+</head>
+<body>
+\t<div id="title">%(title)s</div>"""
+
+  _MOBILE_META = \
+"""<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />"""
+
+  if IsMobile(useragent):
+    return _PAGE_HEADER % ({
+      'title': title,
+      'css': '/static/mobile.css',
+      'additional': _MOBILE_META,
+    })
+  else:
+    return _PAGE_HEADER % ({
+      'title': title,
+      'css': '/static/sopayme.css',
+      'additional': '',
+    })
+
+
+def CreateFooter():
+
+  _PAGE_FOOTER = \
+"""<div class="simple"></div>
+</body>
+<!-- Copyright 2011 SoPay.Me -->"""
+
+  return _PAGE_FOOTER
+
+  
+def CreateHoverLine(record, SPMUser_to_show, linkify, useragent):
 
   outbuf = []
 
@@ -159,7 +183,7 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
   outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
 
   outbuf.append('\t\t\t\t<div class="innerbox amount">' +
-                '<div class="currency">' + text_currency + '</div>&nbsp;' + text_amount + '</div>')
+                '<div class="currency">' + text_currency + '&nbsp;</div>' + text_amount + '</div>')
   outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
   outbuf.append('\t\t\t</div>')
 
@@ -169,6 +193,11 @@ def CreateHoverLine(record, SPMUser_to_show, linkify):
   outbuf.append('\t\t\t\t<div class="innerbox infotext">' + div_paid + text_paid + '</div>')
   outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
   outbuf.append('\t\t\t</div>')
+
+  if IsMobile(useragent):
+    # split to second line for mobile
+    outbuf.append('\t\t\t</div>')
+    outbuf.append('\t\t\t<div class="horizontalbox">')
 
   outbuf.append('\t\t\t<div class="verticalbox innerbox col-face">')
   outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
@@ -290,11 +319,12 @@ class AppPage_Default(webapp.RequestHandler):
     spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
 
     outbuf = []
-    outbuf.append(_PAGE_HEADER % {
-      'title': self._TITLE,
-      'more_header': '',
-    })
-    outbuf.append(_PAGE_FOOTER)
+    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
+    if spm_loggedin_user:
+      outbuf.append('<div class="simple">Logged in.  Go to <a href="/everything">everything</a></div>')
+    else:
+      outbuf.append('<div class="simple">Logged in.  Go to <a href="/everything">everything</a></div>')
+    outbuf.append(CreateFooter())
     self.response.out.write('\n'.join(outbuf))
 
 
@@ -363,10 +393,7 @@ class AppPage_Send(webapp.RequestHandler):
 </form>"""
 
     outbuf = []
-    outbuf.append(_PAGE_HEADER % {
-      'title': self._TITLE,
-      'more_header': '',
-    })
+    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
     outbuf.append('<div class="simple">')
 
     outbuf.append(_PAGE_CONTENT % {
@@ -374,7 +401,7 @@ class AppPage_Send(webapp.RequestHandler):
     })
 
     outbuf.append('</div>')
-    outbuf.append(_PAGE_FOOTER)
+    outbuf.append(CreateFooter())
     self.response.out.write('\n'.join(outbuf))
     
     return
@@ -382,7 +409,8 @@ class AppPage_Send(webapp.RequestHandler):
 
   def post(self):
     """Takes a HTML form post and creates a new expense"""
-    # TODO: convert to JS/JSON with client side logic too
+
+    # TODO: convert to JS/JSON with client side validation logic too
 
     # login required
     um = spmuser.UserManager()
@@ -550,8 +578,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       spm_loggedin_user
     )
 
-    _OTHER_DIVIDER_LINE = '<div class="simplecompact">For other things (invoices not sent with sopay.me)</div>'
-    _RECORD_DIVIDER_LINE = '<div class="simplecompact">For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)</div>'
+    _OTHER_DIVIDER_LINE = '<div class="compact">For other things (invoices not sent with sopay.me)</div>'
+    _RECORD_DIVIDER_LINE = '<div class="compact">For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)</div>'
 
     # group the records into a dict of lists keyed off of url. to be considered
     # in a grouping, the record must have a c14n url and a valid date_sent set,
@@ -564,9 +592,11 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       if not key_url:
         key_url = _OTHER_DIVIDER_LINE
       else:
+        # use split url so we get the three-digit formatting for #
+        split_url = key_url.split('/') # (''/'for'/'name'/'serial')
         key_url = _RECORD_DIVIDER_LINE % ({
-          'forpart': record.spm_name, 
-          'serialpart': record.spm_serial,
+          'forpart': split_url[2], 
+          'serialpart': split_url[3],
         })
       try:
         sort_buckets[key_url]
@@ -589,11 +619,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     ##### start rendering page #####
 
     outbuf = []
-    outbuf.append(_PAGE_HEADER % {
-      'title': self._TITLE,
-      'more_header': '',
-    })
-    outbuf.append(_PAGE_INLINENOTE % {
+    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
+    outbuf.append(_PAGE_INsimple % {
       'message': (
         'Payment updates from Google Checkout may take up to an hour to appear. '
         '<a href="/a?sync=180">Refresh the last 180 days now.</a>'
@@ -605,12 +632,12 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     for date, url_key in list_to_sort:
       outbuf.append(url_key)
       for record in sort_buckets[url_key]:
-        hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=True)
+        hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=True, useragent=self.request.headers.get('user_agent'))
         for line in hoverline:
           outbuf.append(line)
 
     # finish
-    outbuf.append(_PAGE_FOOTER)
+    outbuf.append(CreateFooter())
     self.response.out.write('\n'.join(outbuf))
 
 
@@ -646,11 +673,8 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
     records_shown = False
 
     outbuf = []
-    outbuf.append(_PAGE_HEADER % {
-      'title': self._TITLE,
-      'more_header': '',
-    })
-    outbuf.append(_PAGE_INLINENOTE % {
+    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
+    outbuf.append(_PAGE_INsimple % {
       'message': 'Payment updates from Google Checkout may take up to an hour to appear.'
     })
 
@@ -663,14 +687,16 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
     for record in records:
       records_shown = True
       # TODO lookup seller as well
-      hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=False)
+      hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=False, useragent=self.request.headers.get('user_agent'))
       for line in hoverline:
         outbuf.append(line)
+
+    outbuf.append(CreateFooter())
 
     # for now, alwasys show the checkout button
     #if records[0].checkout_payurl:
     #  outbuf.append(_CHECKOUT_BUTTON_HTML % {'button_url': records[0].checkout_payurl})
-    #outbuf.append(_PAGE_FOOTER)
+    #outbuf.append(CreateFooter())
 
     # if there aren't any records, there's nothing to show
     if not records_shown:

@@ -1,16 +1,10 @@
-html {
-  background-color: #484848;
-  padding: 0px 30px;
-  height: 101%; /* 101 keeps the scroll bar always present to avoid ltr jumping */
+html, body {
+  margin: 0;
+  max-width: 320px; 
 }
 
 body {
   background-color: #FFF;
-
-  width: 800px;
-  min-height: 100%;
-  padding: 0;
-  margin: 0 auto;
 
   color: #333;
   font-size: 13px;
@@ -25,7 +19,10 @@ a:active { color: #D14836 }
 
 #title {
   background-color: #F5F5F5;
-  border-bottom: 1px solid #E5E5E5;
+
+  margin: 0;
+  padding: 16px 8px;
+  border-top: 1px solid #E5E5E5;
 
   color: #D14836;
   font-size: 20px;
@@ -33,7 +30,7 @@ a:active { color: #D14836 }
 }
 
 #navbar {
-  padding: 8px 30px;
+  padding: 8px 8px;
   background-color: #FFF;
 }
 
@@ -61,22 +58,23 @@ input {
 
 /* Highlighted lists page: ui containers */
 
-#title, .lineerror, .simple {
+.simple, .lineerror {
   margin: 0;
-  padding: 21px 30px;
+  padding: 8px 8px;
+  border-top: 1px solid #E5E5E5;
 }
 
 .compact {
-  margin: 0;
-  padding: 4px 30px;
   background: #F5F5F5;
-  border-bottom: 1px solid #E5E5E5;
+  margin: 0;
+  padding: 4px 8px;
   border-top: 1px solid #E5E5E5;
 }
 
 .linehover, .linenohover {
   margin: 0;
-  padding: 4px 30px;
+  padding: 4px 8px;
+  border-top: 1px solid #E5E5E5;
 }
 
 .linehover:hover {
@@ -95,26 +93,28 @@ input {
   /* changes to this should also change picture size */
 }
 .col-amount { 
-  width: 150px;
+  width: 25%;
+  padding-right: 4px;
 }
 .col-desc {
-  width: 250px;
-  padding-right: 10px;
+  width: 75%;
+  padding-right: 4px;
 }
+/* code splits here for mobile */
 .col-face {
-  width: 40px;
+  width: 25%;
 }
 .col-annotation {
-  width: 220px;
-  padding-left: 10px;
+  width: 65%;
+  padding-left: 4px;
 }
 .col-paidbutton {
-  width: 50px;
-  padding-right: 10px;
+  width: 10%;
+  padding-right: 4px;
 }
 
 .horizontalbox {
-  width: 740px;
+  width: auto;
   display: box;
   display: -webkit-box;
   box-orient: horizontal;
@@ -144,7 +144,8 @@ input {
 
 .amount {
   font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
-  font-size: 20px;
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .currency {
