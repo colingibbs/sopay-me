@@ -8,12 +8,6 @@ from spmutil import *
 ################################################################################
 
 
-_PRETTY_TIME = '%B %d'
-_YMD_TIME = '%Y-%m-%d'
-
-
-################################################################################
-
 class NewPage():
 
   def __init__(self, title, useragent, uideb):
@@ -147,12 +141,18 @@ class NewPage():
     #if record.spm_transaction:
     #  text_transaction = str(record.spm_transaction)
 
+    _JUST_MONTH = '%B'
+    _JUST_DAY = '%d'
+    _PRETTY_TIME = '%B %d'
+    _YMD_TIME = '%Y-%m-%d'
+
     # paid information
     text_paid = 'Not paid'
     div_paid = '<div class="icon no"></div>'
     if record.date_paid:
       text_paid = (
-        'Paid on ' + record.date_paid.strftime(_PRETTY_TIME)
+        'Paid on ' + record.date_paid.strftime(_JUST_MONTH) + ' ' +
+         str(long(record.date_paid.strftime(_JUST_DAY)))
         # + ' (' + record.checkout_key +')' # todo linkify this
       )
       div_paid = '<div class="icon yes"></div>'
