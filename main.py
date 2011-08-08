@@ -49,21 +49,24 @@ class AdminPage_Main(webapp.RequestHandler):
     outbuf.append('Query [' + self.request.query + ']')
 
     if self.request.path == '/admin/force':
-      sync_value = long(self.request.get('days'))
+      sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 180
-      if sync_value:
-        outbuf.append('Starting background task to sync ' + str(sync_value) + ' days.')
-        # TODO: move this to a background cron job or user-facing button
-        taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
-          'user_key': spm_loggedin_user.key(),
-          'sync_value': sync_value,
-        })
+      else:
+        sync_value = long(sync_value)
+      outbuf.append('Starting background task to sync ' + str(sync_value) + ' days.')
+      # TODO: move this to a background cron job or user-facing button
+      taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
+        'user_key': spm_loggedin_user.key(),
+        'sync_value': sync_value,
+      })
   
     elif self.request.path == '/admin/dump':
-      sync_value = long(self.request.get('days'))
+      sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 1
+      else:
+        sync_value = long(sync_value)
       right_now = datetime.utcnow() + timedelta(minutes = -6)      
       start_time = right_now + timedelta(days = (sync_value*-1))
       if start_time < right_now:
