@@ -29,6 +29,10 @@ class PurchaseRecord(db.Model):
     reference_class = SPMUser,
     collection_name = 'buyer_spmuid'
   )
+  SPMUser_sentto = db.ReferenceProperty(
+    reference_class = SPMUser,
+    collection_name = 'payer_spmuid'
+  )
 
   # these are not required, since we sync non-sopayme things.  all three must
   # both be present for all sopayme-originating payments

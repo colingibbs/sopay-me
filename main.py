@@ -32,7 +32,7 @@ _YMD_TIME = '%Y-%m-%d'
 _PAGE_INLINEERROR =\
 """<div class="lineerror"><strong>ERROR:</strong> %(message)s</div>"""
 
-_PAGE_INsimple =\
+_PAGE_SIMPLEDIV =\
 """<div class="simple"><strong><em>NOTE:</em></strong> %(message)s</div>"""
 
 _PAGE_INLINE =\
@@ -93,28 +93,28 @@ def CreateFooter():
   return _PAGE_FOOTER
 
   
-def CreateHoverLine(record, SPMUser_to_show, linkify, useragent):
+def CreateHoverLine(record, linkify, useragent):
 
   outbuf = []
 
   ##### validate user information #####
   
-  if SPMUser_to_show:
+  if record.SPMUser_sentto:
     if record.sent_to_email:
       text_email = record.sent_to_email
     else:
-      text_email = str(SPMUser_to_show.email)
+      text_email = str(record.SPMUser_sentto.email)
     if not text_email:
       text_email = 'ERROR: No email'
-    text_seller = SPMUser_to_show.name
+    text_seller = record.SPMUser_sentto.name
     if not text_seller:
       text_seller = text_email
-    if SPMUser_to_show.facebook_id:
-      url_seller_picture = 'http://graph.facebook.com/' + SPMUser_to_show.facebook_id + '/picture?square'
+    if record.SPMUser_sentto.facebook_id:
+      url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
     else:
       url_seller_picture = ''
   else:
-    logging.critical('SPMUser object is none.')
+    logging.debug('Trying to render hover line, SPMUser_sentto is none.')
     text_seller = 'ERROR: No user found'
     text_email = 'ERROR: No user found'
     url_seller_picture = ''
@@ -134,14 +134,20 @@ def CreateHoverLine(record, SPMUser_to_show, linkify, useragent):
     text_sent = '<span class="maybetext">Not from ' + SPM + '</span>'
     div_sent = '<div class="icon maybe"></div>'
 
+  # paid information
   text_paid = 'Not paid'
   div_paid = '<div class="icon no"></div>'
   if record.date_paid:
     text_paid = (
       'Paid on ' + record.date_paid.strftime(_PRETTY_TIME)
       # + ' (' + record.checkout_key +')' # todo linkify this
-    ) 
+    )
     div_paid = '<div class="icon yes"></div>'
+    if record.SPMUser_buyer:
+      if record.SPMUser_buyer.name:
+        text_paid += ' by ' + record.SPMUser_buyer.name
+      elif record.SPMUser_buyer.email:
+        text_paid += ' by ' + record.SPMUser_buyer.email
   else:
     if record.spm_name:
       pass # use default values from above
@@ -170,11 +176,14 @@ def CreateHoverLine(record, SPMUser_to_show, linkify, useragent):
   if record.checkout_payurl and not record.date_paid:
     text_paynow = '<a href="' + record.checkout_payurl + '">Pay now</a>'
 
+  text_transaction = ''
+  if record.spm_transaction:
+    text_transaction = str(record.spm_transaction)
+
   if c14n_url and linkify:
     div_linestyle = '<div class="linehover" onclick="location.href=\'' + c14n_url + '\'">'
   else:
     div_linestyle = '\t<div class="linenohover">' 
-
 
   outbuf.append('\t' + div_linestyle) 
   outbuf.append('\t\t<div class="horizontalbox">')
@@ -295,10 +304,7 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
       return
 
     right_now = datetime.utcnow() + timedelta(minutes = -6)      
-    if spm_user_to_run.checkout_last_sync:
-      start_time = spm_user_to_run.checkout_last_sync
-    else:
-      start_time = right_now + timedelta(days = (sync_value*-1))
+    start_time = right_now + timedelta(days = (sync_value*-1))
     if start_time < right_now:
       checkout = spmcheckout.CheckoutSellerIntegration(spm_user_to_run)
       checkout.GetHistory(
@@ -321,9 +327,9 @@ class AppPage_Default(webapp.RequestHandler):
     outbuf = []
     outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
     if spm_loggedin_user:
-      outbuf.append('<div class="simple">Logged in.  Go to <a href="/everything">everything</a></div>')
+      outbuf.append('<div class="simple">Logged in, so go to <a href="/everything">everything</a>.</div>')
     else:
-      outbuf.append('<div class="simple">Logged in.  Go to <a href="/everything">everything</a></div>')
+      outbuf.append('<div class="simple">Not logged in.  You should <a href="/signin">sign in</a>.</div>')
     outbuf.append(CreateFooter())
     self.response.out.write('\n'.join(outbuf))
 
@@ -494,7 +500,7 @@ class AppPage_Send(webapp.RequestHandler):
       new_pr.date_sent = datetime.utcnow()
       new_pr.date_latest = new_pr.date_sent
       new_pr.sent_to_email = email
-      new_pr.SPMUser_buyer = um.GetSPMUserByEmail(email)
+      new_pr.SPMUser_sentto = um.GetSPMUserByEmail(email)
 
       spmid = BuildSPMID(
         name = new_pr.spm_name,
@@ -592,7 +598,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       if not key_url:
         key_url = _OTHER_DIVIDER_LINE
       else:
-        # use split url so we get the three-digit formatting for #
+        # use split url so we get the nice three-digit formatting for #
         split_url = key_url.split('/') # (''/'for'/'name'/'serial')
         key_url = _RECORD_DIVIDER_LINE % ({
           'forpart': split_url[2], 
@@ -604,7 +610,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
         sort_buckets[key_url] = []
       sort_buckets[key_url].append(record)
 
-    # sort this list by the most recent update in each of the buckets, but
+
+    # sort by the most recent update in each of the buckets, but
     # always sort 'other' last (these are the things not sent with spm)
     list_to_sort = []
     for url in sort_buckets.keys():
@@ -620,7 +627,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
 
     outbuf = []
     outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append(_PAGE_INsimple % {
+    outbuf.append(_PAGE_SIMPLEDIV % {
       'message': (
         'Payment updates from Google Checkout may take up to an hour to appear. '
         '<a href="/a?sync=180">Refresh the last 180 days now.</a>'
@@ -632,7 +639,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     for date, url_key in list_to_sort:
       outbuf.append(url_key)
       for record in sort_buckets[url_key]:
-        hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=True, useragent=self.request.headers.get('user_agent'))
+        hoverline = CreateHoverLine(record, linkify=True, useragent=self.request.headers.get('user_agent'))
         for line in hoverline:
           outbuf.append(line)
 
@@ -674,7 +681,7 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 
     outbuf = []
     outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append(_PAGE_INsimple % {
+    outbuf.append(_PAGE_SIMPLEDIV % {
       'message': 'Payment updates from Google Checkout may take up to an hour to appear.'
     })
 
@@ -687,7 +694,7 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
     for record in records:
       records_shown = True
       # TODO lookup seller as well
-      hoverline = CreateHoverLine(record, record.SPMUser_buyer, linkify=False, useragent=self.request.headers.get('user_agent'))
+      hoverline = CreateHoverLine(record, linkify=False, useragent=self.request.headers.get('user_agent'))
       for line in hoverline:
         outbuf.append(line)
 

@@ -1,6 +1,6 @@
 """Constant lists, URLFetch wrapper and retryer."""
 
-import logging
+import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 from google.appengine.ext import db
 from google.appengine.api import urlfetch
@@ -127,10 +127,15 @@ def ParseSPMURL(spmid, relpath=False):
   # this needs to be 2 or three long
   if len(rest) < 2 or len(rest) > 3:
     return None
+
+  # serial should be numbers
   if not rest[1].isdigit():
     return None
 
   if len(rest) == 3:
+    # transaction should be numbers
+    if not rest[2].isdigit():
+      return None
     transaction = long(rest[2])
   else:
     transaction = None
@@ -146,12 +151,12 @@ def ParseSPMURL(spmid, relpath=False):
 def ParseSPMID(spmid, relpath=False):
   """Calls ParseSPMURL, but also returns None if 'transaction' is not present"""
 
-  return_value = ParseSPMURL(spmid)
+  return_value = ParseSPMURL(spmid, relpath)
   if not return_value:
     return None
   if return_value['transaction'] == None: # explicit none check because 0 is ok
     return None
-  
+
   return return_value
 
 

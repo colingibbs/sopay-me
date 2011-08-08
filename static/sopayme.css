@@ -95,17 +95,17 @@ input {
   /* changes to this should also change picture size */
 }
 .col-amount { 
-  width: 150px;
+  width: 110px;
 }
 .col-desc {
-  width: 250px;
+  width: 300px;
   padding-right: 10px;
 }
 .col-face {
   width: 40px;
 }
 .col-annotation {
-  width: 220px;
+  width: 210px;
   padding-left: 10px;
 }
 .col-paidbutton {

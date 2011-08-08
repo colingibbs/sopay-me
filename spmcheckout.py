@@ -2,6 +2,7 @@
 
 import base64
 from datetime import datetime
+import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
 import pprint # for testing/debugging only
 import random # for testing/debugging only
 import xml
@@ -120,7 +121,7 @@ class CheckoutSellerIntegration:
     return text
 
 
-  def __GetHistoryTransaction(self, notify):
+  def __ApplyTransaction(self, notify):
     """Only call as trasnaction"""
 
     # EXAMPLE NOTIFY INPUT (nested dicts)
@@ -148,79 +149,84 @@ class CheckoutSellerIntegration:
     # risk-information-notification:
     #   (not currently used)
 
-    pr = None
+    this_record = None
 
     ##### identify which record to update #####
 
     checkout_key = notify['google-order-number']
 
-    # easy update - checkout information already in system
-    if not pr:
+    # easiest update - checkout key already in system
+    if not this_record:
       existing_records = db.GqlQuery(
         'SELECT * FROM PurchaseRecord WHERE ANCESTOR IS :1 AND checkout_key = :2',
         MakeAncestorFromSPMUser(self.spm_seller_user), checkout_key
       ).fetch(limit=2)
       if len(existing_records) == 1:
-        pr = existing_records[0]
+        #logging.debug('Found record with checkout key = ' + checkout_key)
+        this_record = existing_records[0]
       elif len(existing_records) >= 2:
         logging.critical('More than one record returned with same checkout_key')
+      #else:
+      #  logging.debug('Could not find record with checkout key = ' + checkout_key)
 
     ##### extract all the data #####
 
     # switch extraction on notification type
-    noteinfo_primary = notify['sopay-me/google-type']
-    if noteinfo_primary == 'new-order-notification':
+    notification_primary = notify['sopay-me/google-type']
+    if notification_primary == 'new-order-notification':
       
       # general information
-      noteinfo_timestamp = self.__ParseCheckoutTime(notify['timestamp'])
+      notification_timestamp = self.__ParseCheckoutTime(notify['timestamp'])
       # purchase information
-      noteinfo_amount = notify['order-total']
-      noteinfo_currency = notify['order-total-currency']
+      notification_amount = notify['order-total']
+      notification_currency = notify['order-total-currency']
       # get buyer information
-      noteinfo_checkout_buyer_email = notify['buyer-billing-address']['email']
-      noteinfo_checkout_buyer_name = notify['buyer-billing-address']['contact-name']
-      noteinfo_checkout_buyer_id = notify['buyer-id']
+      notification_checkout_buyer_email = notify['buyer-billing-address']['email']
+      notification_checkout_buyer_name = notify['buyer-billing-address']['contact-name']
+      notification_checkout_buyer_id = notify['buyer-id']
       # get individual item information
       # TODO loop through all items and treat separately
-      noteinfo_description = notify['shopping-cart']['items']['item1']['item-description']
+      notification_description = notify['shopping-cart']['items']['item1']['item-description']
       try:
-        noteinfo_private_data = notify['shopping-cart']['items']['item1']['merchant-private-item-data']
+        notification_private_data = notify['shopping-cart']['items']['item1']['merchant-private-item-data']
       except KeyError:
-        noteinfo_private_data = None
-
+        notification_private_data = None
 
 
       # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
       # used for testing locally on zach's desktop
       todo_remove_test_override_date_sent = None
-      if noteinfo_primary == 'new-order-notification' and noteinfo_private_data:
-        if noteinfo_private_data == 'sopay.me/for/TEST_20110720':
-          noteinfo_private_data = 'sopay.me/for/duptest/000/' + noteinfo_amount[2]
+      if notification_primary == 'new-order-notification' and notification_private_data:
+        if notification_private_data == 'sopay.me/for/TEST_20110720':
+          notification_private_data = 'sopay.me/for/duptest/000/' + notification_amount[2]
           todo_remove_test_override_date_sent = datetime(2011, 1, 11, 1, 11)
-          if noteinfo_amount == '0.77':
-            noteinfo_checkout_buyer_email = 'zpm@google.com'
-        elif noteinfo_private_data == '340101':
-          noteinfo_private_data = 'sopay.me/for/test2/000/0'
+          if notification_amount == '0.77':
+            notification_checkout_buyer_email = 'zpm@google.com'
+        elif notification_private_data == '340101':
+          notification_private_data = 'sopay.me/for/test2/000/0'
           todo_remove_test_override_date_sent = datetime(2011, 2, 22, 2, 22)
-        elif noteinfo_private_data == 'sopay.me/for/TEST_20110720_439':
-          noteinfo_private_data = 'sopay.me/for/test3-nosend/000/0'
-        elif noteinfo_private_data == 'sopay.me/for/TEST_20110720_number2':
-          noteinfo_private_data = 'sopay.me/for/test4-nosend/000/0'
-        elif noteinfo_private_data == 'sopay.me/for/Q':
-          noteinfo_private_data = 'sopay.me/for/test5/000/0'
+        elif notification_private_data == 'sopay.me/for/TEST_20110720_439':
+          notification_private_data = 'sopay.me/for/test3-nosend/000/0'
+        elif notification_private_data == 'sopay.me/for/TEST_20110720_number2':
+          notification_private_data = 'sopay.me/for/test4-nosend/000/0'
+        elif notification_private_data == 'sopay.me/for/Q':
+          notification_private_data = 'sopay.me/for/test5/000/0'
           todo_remove_test_override_date_sent = datetime(2011, 5, 5, 5, 5)
       # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
 
 
 
-      # if there's not yet valid record but there is a valid spm_name/serial/transaction,
-      # then try looking up based on that valid spm name/serial
-      
-      #if the checkout_key is
-      # empty, then good... if not, then this is a duplicate of the same spm name/serial, 
-      # so don't do anything and let the default creation flow run below...
-      parsed_id = ParseSPMID(noteinfo_private_data)
-      if not pr and parsed_id:
+      # output status for debugging
+      #logging.debug('Running update for...')
+      #if notification_private_data:
+      #  logging.debug('     Private: ' + notification_private_data)
+      #if notification_description:
+      #  logging.debug('     Desc: ' + notification_description)
+
+      # if there's not yet a record, try to find one using name/serial/transaction
+      parsed_id = ParseSPMID(notification_private_data)
+      if not this_record and parsed_id:
+        logging.debug('Querying ' + parsed_id['c14n'])
         existing_records = db.GqlQuery(
           'SELECT * FROM PurchaseRecord ' +
           'WHERE ANCESTOR IS :1 AND spm_name = :2 AND spm_serial = :3 ' + 
@@ -229,136 +235,118 @@ class CheckoutSellerIntegration:
           parsed_id['name'], parsed_id['serial'], parsed_id['transaction']
         ).fetch(limit=2)
         if len(existing_records) == 1:
-          # ensure that this record isn't earmarked to be paid by someone else
-          # before we update it with this payment
-          logging.debug('Matched spm_name/serial/transaction.')
-          logging.debug(noteinfo_checkout_buyer_email)
-          logging.debug(noteinfo_amount)
-          logging.debug(noteinfo_currency)
-          logging.debug(noteinfo_description)
-          if existing_records[0].SPMUser_buyer:
-            # match this record using our criteria
-            logging.debug('Trying to update...')
-            logging.debug(existing_records[0].SPMUser_buyer.email)
-            logging.debug(existing_records[0].amount)
-            logging.debug(existing_records[0].currency)
-            logging.debug(existing_records[0].description)
-            if noteinfo_checkout_buyer_email in existing_records[0].SPMUser_buyer.email:
-              # check float() to catch enter 1.00 return 1.0
-              if float(existing_records[0].amount) == float(noteinfo_amount):
-                if existing_records[0].currency == noteinfo_currency:
-                  if existing_records[0].description == noteinfo_description:
-                    pr = existing_records[0]
-                    logging.debug('Updated.')
-            if not pr:
-              # this case means that the name/serial/transaction matched, but one
-              # of the other details didn't match.  So we just create a new record
-              logging.debug('Not updated.')
-          else:
-            pr = existing_records[0]
+          logging.debug('Matched spm_name/serial/transaction.  Notification:')
+          logging.debug(notification_amount)
+          logging.debug(notification_currency)
+          logging.debug(notification_description)
+          # match this record using our criteria
+          logging.debug('Trying to update existing record:')
+          logging.debug(existing_records[0].amount)
+          logging.debug(existing_records[0].currency)
+          logging.debug(existing_records[0].description)
+          # check float() to catch enter 1.00 return 1.0
+          if float(existing_records[0].amount) == float(notification_amount):
+            if existing_records[0].currency == notification_currency:
+              if existing_records[0].description == notification_description:
+                this_record = existing_records[0]
+                logging.debug('MATCH! Going to update this one.')
+          if not this_record:
+            # this case means that the name/serial/transaction matched, but one
+            # of the other details didn't match.  So we just create a new record
+            logging.debug('Not a match.  Creating new.')
         elif len(existing_records) >= 2:
           logging.critical('More than one record returned with same spm name/serial/transaction')
+        else:
+          logging.critical('Received new order without name/serial/transaction in system')
 
       # already checked to see if this checkout order was in the system or the
-      # private data spm name/serial were in the system... and if neither of 
+      # this_recordivate data spm name/serial were in the system... and if neither of 
       # them were, just create the new order record
-      if not pr:
-        pr = spmdb.PurchaseRecord(
+      if not this_record:
+        this_record = spmdb.PurchaseRecord(
           parent = MakeAncestorFromSPMUser(self.spm_seller_user),
           SPMUser_seller = self.spm_seller_user.key()
         )
 
-      # .... by this point pr definitely exists, so let the updating begin ....
+      # .... by this point this_record definitely exists, so let the updating begin ....
 
 
 
       # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
       # used for testing locally on zach's desktop
       if todo_remove_test_override_date_sent:
-        if not pr.date_sent:
-          pr.date_sent = todo_remove_test_override_date_sent
-        elif todo_remove_test_override_date_sent > pr.date_sent:
-          pr.date_sent = todo_remove_test_override_date_sent
-        if not pr.date_latest:
-          pr.date_latest = todo_remove_test_override_date_sent      
-        elif todo_remove_test_override_date_sent > pr.date_latest:
-          pr.date_latest = todo_remove_test_override_date_sent
+        if not this_record.date_sent:
+          this_record.date_sent = todo_remove_test_override_date_sent
+        elif todo_remove_test_override_date_sent > this_record.date_sent:
+          this_record.date_sent = todo_remove_test_override_date_sent
+        if not this_record.date_latest:
+          this_record.date_latest = todo_remove_test_override_date_sent      
+        elif todo_remove_test_override_date_sent > this_record.date_latest:
+          this_record.date_latest = todo_remove_test_override_date_sent
       # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
 
 
 
       if parsed_id:
-        pr.spm_name = parsed_id['name']
-        pr.spm_serial = parsed_id['serial']
-        pr.spm_transaction = parsed_id['transaction']
+        this_record.spm_name = parsed_id['name']
+        this_record.spm_serial = parsed_id['serial']
+        this_record.spm_transaction = parsed_id['transaction']
 
-      # if there's no date at all in this record, at least write this for
+      # if there's no date at all in this record, at least write the timestamp for
       # sorting purposes (checkout sometimes doesn't notify of payment
-      # properly or is super-delayed, so this hack is necessary)
-      if not pr.date_latest:
-        pr.date_latest = noteinfo_timestamp
+      # this_recordoperly or is super-delayed, so this hack is necessary)
+      if not this_record.date_latest:
+        this_record.date_latest = notification_timestamp
 
       # link this payment to an account.  GetSPMUserByEmail will force-create
       # a user with this information if it doesn't exist already
-      if not pr.SPMUser_buyer:
+      if not this_record.SPMUser_buyer:
         um = spmuser.UserManager()
-        pr.SPMUser_buyer = um.GetSPMUserByEmail(noteinfo_checkout_buyer_email)
-        # TODO: need to handle if this comes back None (2 accts with same email)
-      else:
-        logging.critical('This should not ever happen.')
+        this_record.SPMUser_buyer = um.GetSPMUserByEmail(notification_checkout_buyer_email)
       
-      pr.checkout_buyer_email = noteinfo_checkout_buyer_email
+      this_record.checkout_buyer_email = notification_checkout_buyer_email
       # this is only useful for helping backfill from non-spm stuff
-      if not pr.sent_to_email:
-        pr.sent_to_email = noteinfo_checkout_buyer_email
-      pr.checkout_buyer_name = noteinfo_checkout_buyer_name
+      if not this_record.sent_to_email:
+        this_record.sent_to_email = notification_checkout_buyer_email
+      this_record.checkout_buyer_name = notification_checkout_buyer_name
       # if there isn't a user name for this user (i.e., this was just created
-      # a few lines above), then let's pre-populate it
-      if not pr.SPMUser_buyer.name:
-        pr.SPMUser_buyer.name = noteinfo_checkout_buyer_name
-        pr.SPMUser_buyer.put()
-      pr.checkout_buyer_id = noteinfo_checkout_buyer_id
-      pr.amount = noteinfo_amount
-      pr.currency = noteinfo_currency
-      pr.description = noteinfo_description
+      # a few lines above), then let's this_recorde-populate it
+      if not this_record.SPMUser_buyer:
+        this_record.SPMUser_buyer.name = notification_checkout_buyer_name
+        this_record.SPMUser_buyer.put()
+      this_record.checkout_buyer_id = notification_checkout_buyer_id
+      this_record.amount = notification_amount
+      this_record.currency = notification_currency
+      this_record.description = notification_description
 
       # try to identify and parse spmid
       spm_invoice_id = ''
-      pr.spm_url = spm_invoice_id
+      this_record.spm_url = spm_invoice_id
 
 
-    elif noteinfo_primary == 'charge-amount-notification':
+    elif notification_primary == 'charge-amount-notification':
 
-      noteinfo_date_paid = self.__ParseCheckoutTime(notify['timestamp'])
+      if not this_record:
+        logging.critical('Payment update found with no record in system.  This is most likely an ordering issue.')
 
-      # already checked to see if this checkout order was in the system... if
-      # it's not, we don't have any more metadata so we have no choice but to
-      # just create a new record
-      if not pr:
-        pr = spmdb.PurchaseRecord(
-          parent = MakeAncestorFromSPMUser(self.spm_seller_user),
-          SPMUser_seller = self.spm_seller_user.key()
-        )
+      else:
+        notification_date_paid = self.__ParseCheckoutTime(notify['timestamp'])
+        this_record.date_paid = notification_date_paid
+        if not this_record.date_latest or this_record.date_paid > this_record.date_latest:
+          this_record.date_latest = this_record.date_paid
 
-      # .... by this point pr definitely exists, so let the updating begin ....
-
-      pr.date_paid = noteinfo_date_paid
-      if not pr.date_latest or pr.date_paid > pr.date_latest:
-        pr.date_latest = pr.date_paid
-
-    elif noteinfo_primary == 'order-state-change-notification':
-      pass
-    elif noteinfo_primary == 'risk-information-notification':
-      pass
-    else:
-      logging.warning('Unexpected primary_type in parsing checkout response')
-
-    # this may blatantly overwrite these two fields, but there isn't any
-    # situation where this doesn't make sense
-    if pr:
-      pr.checkout_key = checkout_key
-      pr.checkout_merchant_id = self.spm_seller_user.checkout_merchant_id
-      pr.put()
+    # perform a common set of updates
+    if this_record:
+      # this may blatantly re-overwrite these two fields, but there isn't any
+      # situation where this doesn't make sense
+      this_record.checkout_key = checkout_key
+      this_record.checkout_merchant_id = self.spm_seller_user.checkout_merchant_id
+      # populate 'sent to' with 'buyer' for non-spm-sent receipts (assumes that
+      # the record was sent to whoever paid it since we have no other context)
+      if not this_record.SPMUser_sentto and this_record.SPMUser_buyer:
+        this_record.SPMUser_sentto = this_record.SPMUser_buyer
+      # write
+      this_record.put()
 
 
   def GetHistory(self, utc_start, utc_end):
@@ -421,10 +409,29 @@ class CheckoutSellerIntegration:
       except KeyError:
         cur_payload = None
 
-    # for each item in our aggregate list, add it to the data store
+    # sort basd on type
+    new_order_list = []
+    order_update_list = []
     for notify in aggregate_list:
-      # TODO this should probably be db.run_in_transaction(self.__GetHistoryTransaction, notify)
-      self.__GetHistoryTransaction(notify)
+      # TODO this should probably be db.run_in_transaction(self.__ApplyTransaction, notify)
+      notification_primary = notify['sopay-me/google-type']
+      if notification_primary == 'new-order-notification':
+        new_order_list.append(notify)
+      elif notification_primary == 'charge-amount-notification':
+        order_update_list.append(notify)
+      elif notification_primary == 'order-state-change-notification':
+        pass
+      elif notification_primary == 'risk-information-notification':
+        pass
+      else:
+        logging.critical('Unexpected primary_type in parsing checkout response')
+
+    # do new order notification first to avoid checkout id collisions (we want
+    # the record to be in the system with details first before we update it)
+    for notify in new_order_list:
+      self.__ApplyTransaction(notify)
+    for notify in order_update_list:
+      self.__ApplyTransaction(notify)      
     
     # record that we've just synced this
     self.spm_seller_user.checkout_last_sync = datetime.utcnow()
