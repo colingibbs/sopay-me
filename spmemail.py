@@ -12,22 +12,32 @@ class SPMEmailManager():
     self.from_name = from_name
 
 
-  def SendEmail(self, to_name, to_email, spm_for, spm_url, pay_url, description):
+  def SendEmail(self, to_name, to_email, spm_for, spm_url, pay_url, description, amount):
 
     _EMAIL_HTML = \
-"""Hey %(to_name)s,<br/>
+"""<div style="font-family: arial, sans-serif">
+<div style="font-size: 13px; color: #333;">
 <br/>
-%(from_name)s says "so pay me for %(spm_for)s!"<br/>
+Hey %(to_name)s,
+<br/><br/>
+%(from_name)s says "so pay me for %(spm_for)s!"
+<br/><br/>
+<div style="border: 1px solid #E5E5E5; padding: 8px;">
+<span style="font-family: Palatino Linotype, Book Andiqua, Palatino, serif; padding-left: 4px; font-size: 15px;">$%(amount)s</span>
+&nbsp;&nbsp;
+<span style="font-style: italic;">%(desc)s</span>
+</div>
 <br/>
-%(desc)s<br/>
+<a href="%(pay_url)s">Pay now using Google Checkout</a>
+<br/><br/>
+Want someone else to pay for you?  Point them at <a href="%(spm_url)s">%(spm_url)s</a>.
+<br/><br/>
+Thanks!
 <br/>
-<a href="%(pay_url)s">Pay now</a> using Google checkout.<br/>
-<br/>
-Or check out who else has paid at <a href="%(spm_url)s">%(spm_url)s</a><br/>
-<br/>
-Thanks,<br/>
-- the sopay.me team<br/>
-"""
+- The team at <a href="www.sopay.me">sopay.me</a>
+<br/><br/>
+</div>
+</div>"""
 
     if not to_name:
       to_name = ''
@@ -44,6 +54,7 @@ Thanks,<br/>
       'spm_url': spm_url,
       'pay_url': pay_url,
       'desc': description,
+      'amount': amount,
     })
 
     message = mail.EmailMessage(

@@ -1,0 +1,4 @@
+cron:
+- description: cron job to auto-sync all user's accounts
+  url: /task/synccron
+  schedule: every 1 hours

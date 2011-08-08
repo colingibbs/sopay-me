@@ -61,6 +61,16 @@ def CreateHeader(title, useragent):
 \t<title>%(title)s</title>
 \t<link rel="stylesheet" type="text/css" href="%(css)s" />
 %(additional)s
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-17941280-2']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
 </head>
 <body>
 \t<div id="title">%(title)s</div>"""
@@ -313,6 +323,22 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
       )
 
 
+class TaskPage_SyncCron(webapp.RequestHandler):
+  """Runs sync checkout in the background for all users with checkout_verified."""
+
+  def get(self):
+
+    logging.debug('Task SyncCron starting')
+    userlist = db.GqlQuery(
+      'SELECT * FROM SPMUser WHERE checkout_verified = TRUE'
+    )
+    for user in userlist:
+      taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
+        'user_key': user.key(),
+        'sync_value': 1,
+      })
+
+
 class AppPage_Default(webapp.RequestHandler):
 
   def __init__(self):
@@ -326,10 +352,11 @@ class AppPage_Default(webapp.RequestHandler):
 
     outbuf = []
     outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
+    outbuf.append('<div class="simple">A simple way to send bills to friends.</div>')
     if spm_loggedin_user:
-      outbuf.append('<div class="simple">Logged in, so go to <a href="/everything">everything</a>.</div>')
+      outbuf.append('<div class="compact">Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.</div>')
     else:
-      outbuf.append('<div class="simple">Not logged in.  You should <a href="/signin">sign in</a>.</div>')
+      outbuf.append('<div class="compact">Not logged in.  You should <a href="/signin">sign in</a>.</div>')
     outbuf.append(CreateFooter())
     self.response.out.write('\n'.join(outbuf))
 
@@ -540,7 +567,8 @@ class AppPage_Send(webapp.RequestHandler):
           serial = new_pr.spm_serial,
         ),
         pay_url = checkout_payurl,
-        description = newcr_description
+        description = newcr_description,
+        amount = new_pr.amount, 
       )
 
       # commit record - do this last in case anything above fails
@@ -630,7 +658,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     outbuf.append(_PAGE_SIMPLEDIV % {
       'message': (
         'Payment updates from Google Checkout may take up to an hour to appear. '
-        '<a href="/a?sync=180">Refresh the last 180 days now.</a>'
+        '<a href="/a?sync=1">Refresh the last day now.</a>'
         # TODO: remove this message when sync gets moved to cron
       )
     })
@@ -719,6 +747,7 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 application = webapp.WSGIApplication([
   # Background task queues
   ('/task/checkout', TaskPage_SyncCheckout),
+  ('/task/synccron', TaskPage_SyncCron),
   # User-facing functional pages
   #('/connections', AppPage_Connections),
   ('/a', AppPage_Admin),
