@@ -1,49 +1,12 @@
 html, body {
   margin: 0;
-  max-width: 320px; 
+  width: 320px; 
 }
-
-body {
-  background-color: #FFF;
-
-  color: #333;
-  font-size: 13px;
-  font-family: arial, sans-serif;
-  line-height: 18px;
-}
-
-body strong { color: #222222 }
-a:link { color: #1155CC }
-a:visited { color: #6611CC }
-a:active { color: #D14836 }
 
 #title {
-  background-color: #F5F5F5;
-
   margin: 0;
   padding: 16px 8px;
   border-top: 1px solid #E5E5E5;
-
-  color: #D14836;
-  font-size: 20px;
-  font-weight: normal;
-}
-
-#navbar {
-  padding: 8px 8px;
-  background-color: #FFF;
-}
-
-/* default for text-only pages */
-
-p {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-ul {
-  margin-top: 4;
-  margin-bottom: 0;
 }
 
 /* form page (shitty submit page) */
@@ -58,16 +21,16 @@ input {
 
 /* Highlighted lists page: ui containers */
 
-.simple, .lineerror {
+.lineerror, .simple {
   margin: 0;
   padding: 8px 8px;
   border-top: 1px solid #E5E5E5;
 }
 
 .compact {
-  background: #F5F5F5;
   margin: 0;
   padding: 4px 8px;
+  background: #F5F5F5;
   border-top: 1px solid #E5E5E5;
 }
 
@@ -77,70 +40,19 @@ input {
   border-top: 1px solid #E5E5E5;
 }
 
-.linehover:hover {
-  background-color: #F9EDBE;
+/* Mobile sizing */
+
+.col-mobileleft { 
+  width: 40px !important;
+  padding-right: 8px;
 }
 
-.simple, .simple strong {
-  color: #666;
+.col-mobileright {
+  width: 256px !important;
+  padding: 0;
 }
 
-/* Highlighted lists page: layout */
-/* list page and friend page */
-
-.col-amount, .col-face, .col-annotation, .col-status {
-  height: 50px;
-  /* changes to this should also change picture size */
-}
-.col-amount { 
-  width: 25%;
-  padding-right: 4px;
-}
-.col-desc {
-  width: 75%;
-  padding-right: 4px;
-}
-/* code splits here for mobile */
-.col-face {
-  width: 25%;
-}
-.col-annotation {
-  width: 65%;
-  padding-left: 4px;
-}
-.col-paidbutton {
-  width: 10%;
-  padding-right: 4px;
-}
-
-.horizontalbox {
-  width: auto;
-  display: box;
-  display: -webkit-box;
-  box-orient: horizontal;
-  -webkit-box-orient: horizontal;
-}
-
-.verticalbox {
-  display: box;
-  display: -webkit-box;
-  box-orient: vertical;
-  -webkit-box-orient: vertical;
-}
-
-.innerbox {
-  display: box;
-  display: -webkit-box;
-  box-flex: 1;
-  -webkit-box-flex: 1;
-}
-
-.innerspacer {
-  box-flex: 1000;
-  -webkit-box-flex: 1000;
-}
-
-/* Highlighted lists page: specific div units */
+/* Mobile formatting */
 
 .amount {
   font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
@@ -150,64 +62,8 @@ input {
 
 .currency {
   font-variant: small-caps;
-  font-size: 14px;
+  font-size: 12px;
   vertical-align: top;
 }
 
-.picture {
-  background-color: #F5F5F5;
-  background-repeat: no-repeat;
 
-  padding: 0;
-  margin: 5px 0 5px 0;
-  height: 40px;
-  width: 40px;
-
-  border-radius: 4px;
-  -webkit-border-radius: 4px;
-}
-
-.secondary {
-  color: #666;
-  font-size: 11px;
-}
-
-.infotext, .secondary {
-  padding: 1px 0 1px 0px;
-  margin: 0;
-  /* height should be 18px: 16+1+1 */
-}
-
-.infotext a:link, .infotext a:visited {
-  color: #333;
-  text-decoration: none;
-}
-.infotext a:hover {
-  color: #D14836;
-  text-decoration: none;
-}
-
-.icon {
-  padding: 0;
-  margin: 2px 6px 0px 0px;
-  height: 13px;
-  width: 13px;
-
-  border-radius: 4px;
-  -webkit-border-radius: 4px;
-}
-
-.yes {
-  background-color: #50C25B;
-}
-
-.maybe {
-  background-color: #666;
-}
-.maybetext {
-  color: #666;
-}
-
-.no {
-  background-color: #D14836;
-}

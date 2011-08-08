@@ -1,0 +1,83 @@
+html {
+  background-color: #484848;
+  padding: 0px 30px;
+  height: 101%; /* 101 keeps the scroll bar always present to avoid ltr jumping */
+}
+
+body {
+  width: 800px;
+  min-height: 100%;
+  padding: 0;
+  margin: 0 auto;
+}
+
+
+#title {
+  margin: 0;
+  padding: 21px 30px;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+/* Highlighted lists page: ui containers */
+
+.lineerror, .simple {
+  margin: 0;
+  padding: 21px 30px;
+}
+
+.compact {
+  margin: 0;
+  padding: 4px 30px;
+  background: #F5F5F5;
+  border-bottom: 1px solid #E5E5E5;
+  border-top: 1px solid #E5E5E5;
+}
+
+.linehover, .linenohover {
+  margin: 0;
+  padding: 4px 30px;
+}
+
+.linehover:hover {
+  background-color: #F9EDBE;
+}
+
+/* Desktop sizing */
+
+.col-amount, .col-face, .col-annotation, .col-status {
+  height: 50px;
+}
+.col-amount { 
+  width: 110px;
+}
+.col-desc {
+  width: 300px;
+  padding-right: 10px;
+}
+.col-face {
+  width: 40px;
+}
+.col-annotation {
+  width: 200px;
+  padding-left: 10px;
+}
+.col-paidbutton {
+  width: 60px;
+  padding-right: 10px;
+}
+
+/* Desktop formatting */
+
+.amount {
+  font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
+  font-size: 20px;
+}
+
+.currency {
+  font-variant: small-caps;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+
+

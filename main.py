@@ -3,7 +3,7 @@ import cgi # parsing form input from /now
 from datetime import datetime, timedelta
 import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
 import os # for setting timezone
-import pprint # for testing/debugging only
+import pprint # for debugging print out
 import random # for testing only
 import re # for matching email addresses
 import string # for ascii_lowercase (testing only)
@@ -19,6 +19,7 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 import spmdb
 import spmemail
 import spmcheckout
+import spmbuilder
 import spmuser
 from spmutil import *
 
@@ -26,249 +27,10 @@ from spmutil import *
 ################################################################################
 
 
-_PRETTY_TIME = '%B %d'
-_YMD_TIME = '%Y-%m-%d'
+class AdminPage_Main(webapp.RequestHandler):
 
-_PAGE_INLINEERROR =\
-"""<div class="lineerror"><strong>ERROR:</strong> %(message)s</div>"""
-
-_PAGE_SIMPLEDIV =\
-"""<div class="simple"><strong><em>NOTE:</em></strong> %(message)s</div>"""
-
-_PAGE_INLINE =\
-"""<div class="simple">%(message)s</div>"""
-
-pp = pprint.PrettyPrinter(indent=1)
-
-
-################################################################################
-
-
-def IsMobile(useragent):
-  if 'android' in useragent.lower() or 'iphone' in useragent.lower():
-    return True
-  else:
-    return False
-
-
-def CreateHeader(title, useragent):
-
-  _PAGE_HEADER = \
-"""<!DOCTYPE HTML>
-<html>
-<head>
-\t<meta http-equiv="content-type" content="text/html; charset=utf-8">
-\t<title>%(title)s</title>
-\t<link rel="stylesheet" type="text/css" href="%(css)s" />
-%(additional)s
-<script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-17941280-2']);
-  _gaq.push(['_trackPageview']);
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
-</head>
-<body>
-\t<div id="title">%(title)s</div>"""
-
-  _MOBILE_META = \
-"""<meta name="HandheldFriendly" content="true" />
-<meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />"""
-
-  if IsMobile(useragent):
-    return _PAGE_HEADER % ({
-      'title': title,
-      'css': '/static/mobile.css',
-      'additional': _MOBILE_META,
-    })
-  else:
-    return _PAGE_HEADER % ({
-      'title': title,
-      'css': '/static/sopayme.css',
-      'additional': '',
-    })
-
-
-def CreateFooter():
-
-  _PAGE_FOOTER = \
-"""<div class="simple"></div>
-</body>
-<!-- Copyright 2011 SoPay.Me -->"""
-
-  return _PAGE_FOOTER
-
-  
-def CreateHoverLine(record, linkify, useragent):
-
-  outbuf = []
-
-  ##### validate user information #####
-  
-  if record.SPMUser_sentto:
-    if record.sent_to_email:
-      text_email = record.sent_to_email
-    else:
-      text_email = str(record.SPMUser_sentto.email)
-    if not text_email:
-      text_email = 'ERROR: No email'
-    text_seller = record.SPMUser_sentto.name
-    if not text_seller:
-      text_seller = text_email
-    if record.SPMUser_sentto.facebook_id:
-      url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
-    else:
-      url_seller_picture = ''
-  else:
-    logging.debug('Trying to render hover line, SPMUser_sentto is none.')
-    text_seller = 'ERROR: No user found'
-    text_email = 'ERROR: No user found'
-    url_seller_picture = ''
-
-  ##### validate record information #####
-
-  c14n_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)
-
-  if record.date_sent:
-    text_sent = (
-      'Sent on ' + record.date_sent.strftime(_PRETTY_TIME)
-      # + ': <a href="' + c14n_url + '">' + c14n_url[1:] + '</a>'
-    )
-    div_sent = '<div class="icon yes"></div>'
-  else:
-    # TODO remove if we stop showing old items
-    text_sent = '<span class="maybetext">Not from ' + SPM + '</span>'
-    div_sent = '<div class="icon maybe"></div>'
-
-  # paid information
-  text_paid = 'Not paid'
-  div_paid = '<div class="icon no"></div>'
-  if record.date_paid:
-    text_paid = (
-      'Paid on ' + record.date_paid.strftime(_PRETTY_TIME)
-      # + ' (' + record.checkout_key +')' # todo linkify this
-    )
-    div_paid = '<div class="icon yes"></div>'
-    if record.SPMUser_buyer:
-      if record.SPMUser_buyer.name:
-        text_paid += ' by ' + record.SPMUser_buyer.name
-      elif record.SPMUser_buyer.email:
-        text_paid += ' by ' + record.SPMUser_buyer.email
-  else:
-    if record.spm_name:
-      pass # use default values from above
-    else:
-      # in this case we don't have a payment date and we don't have a spm_name
-      # record indicating this was created by us.  This should never happen.
-      logging.critical('Impossible situation.  Wtf.  Key=' + str(record.key()) + 
-        ' Description=' + record.description)
-      pass
-
-  text_desc = 'Description unknown'
-  if record.description:
-    text_desc = record.description
-
-  text_amount = '0.00'
-  if record.amount:
-    text_amount = '%0.2f' % float(record.amount)
-
-  text_currency = record.currency
-  if not text_currency:
-    text_currency = 'ERROR'
-  elif text_currency == 'USD':
-    text_currency = '$'
-
-  text_paynow = ''
-  if record.checkout_payurl and not record.date_paid:
-    text_paynow = '<a href="' + record.checkout_payurl + '">Pay now</a>'
-
-  text_transaction = ''
-  if record.spm_transaction:
-    text_transaction = str(record.spm_transaction)
-
-  if c14n_url and linkify:
-    div_linestyle = '<div class="linehover" onclick="location.href=\'' + c14n_url + '\'">'
-  else:
-    div_linestyle = '\t<div class="linenohover">' 
-
-  outbuf.append('\t' + div_linestyle) 
-  outbuf.append('\t\t<div class="horizontalbox">')
-
-  outbuf.append('\t\t\t<div class="verticalbox innerbox col-amount">')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-
-  outbuf.append('\t\t\t\t<div class="innerbox amount">' +
-                '<div class="currency">' + text_currency + '&nbsp;</div>' + text_amount + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t</div>')
-
-  outbuf.append('\t\t\t<div class="verticalbox innerbox col-desc">')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t\t<div class="innerbox infotext">' + text_desc + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerbox infotext">' + div_paid + text_paid + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t</div>')
-
-  if IsMobile(useragent):
-    # split to second line for mobile
-    outbuf.append('\t\t\t</div>')
-    outbuf.append('\t\t\t<div class="horizontalbox">')
-
-  outbuf.append('\t\t\t<div class="verticalbox innerbox col-face">')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t\t<div class="innerbox picture" style="background-image:url(\'' + url_seller_picture + '\');"></div>')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t</div>')
-
-  outbuf.append('\t\t\t<div class="verticalbox innerbox col-annotation">')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t\t<div class="innerbox infotext">' + text_seller + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerbox secondary">' + text_email + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t</div>')
-
-  outbuf.append('\t\t\t<div class="verticalbox innerbox col-paidbutton">')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t\t<div class="innerbox infotext">' + text_paynow + '</div>')
-  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-  outbuf.append('\t\t\t</div>')
-
-#  outbuf.append('\t\t\t<div class="verticalbox innerbox col-status">')
-#  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-#  outbuf.append('\t\t\t\t<div class="innerbox infotext">' + div_sent + text_sent + '</div>')
-#  outbuf.append('\t\t\t\t<div class="innerspacer"></div>')
-#  outbuf.append('\t\t\t</div>')
-
-  outbuf.append('\t\t</div>') # lineitem
-  outbuf.append('\t</div>') # linehover
-  
-  return outbuf
-
-
-
-################################################################################
-
-
-class AppPage_DefaultRedirect(webapp.RequestHandler):
-  def get(self):
-    self.redirect("/")
-
-
-class AppPage_SignoutRedirect(webapp.RequestHandler):
-  def get(self):
-    self.redirect(users.create_logout_url('/'))
-
-
-class AppPage_SigninRedirect(webapp.RequestHandler):
-  def get(self):
-    self.redirect(users.create_login_url('/'))
-
-
-class AppPage_Admin(webapp.RequestHandler):
+  def __init__(self):
+    self._TITLE = 'admin'
 
   def get(self):
 
@@ -278,24 +40,46 @@ class AppPage_Admin(webapp.RequestHandler):
     if not spm_loggedin_user:
       self.redirect('/')
       return
+      
+    # admin check taken care of in app.yaml
 
-    query = self.request.query
-    if not query:
-      self.redirect('/')
-      return
+    outbuf = ['<body><pre>']
 
-    print query
+    outbuf.append('Path  [' + self.request.path + ']')
+    outbuf.append('Query [' + self.request.query + ']')
 
-    sync_value = long(self.request.get('sync'))
-    if not sync_value:
-      sync_value = 180
-    if sync_value:
-      print 'Starting background task to sync ' + str(sync_value) + ' days.'
-      # TODO: move this to a background cron job or user-facing button
-      taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
-        'user_key': spm_loggedin_user.key(),
-        'sync_value': sync_value,
-      })
+    if self.request.path == '/admin/force':
+      sync_value = long(self.request.get('days'))
+      if not sync_value:
+        sync_value = 180
+      if sync_value:
+        outbuf.append('Starting background task to sync ' + str(sync_value) + ' days.')
+        # TODO: move this to a background cron job or user-facing button
+        taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
+          'user_key': spm_loggedin_user.key(),
+          'sync_value': sync_value,
+        })
+  
+    elif self.request.path == '/admin/dump':
+      sync_value = long(self.request.get('days'))
+      if not sync_value:
+        sync_value = 1
+      right_now = datetime.utcnow() + timedelta(minutes = -6)      
+      start_time = right_now + timedelta(days = (sync_value*-1))
+      if start_time < right_now:
+        checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
+        history = checkout.GetHistory(
+          utc_start = start_time,
+          utc_end = right_now
+        )
+      pp = pprint.PrettyPrinter()
+      outbuf.append(pp.pformat(history))
+  
+    outbuf.append('</pre></body>')
+    self.response.out.write('\n'.join(outbuf))
+
+
+################################################################################
 
 
 class TaskPage_SyncCheckout(webapp.RequestHandler):
@@ -339,6 +123,24 @@ class TaskPage_SyncCron(webapp.RequestHandler):
       })
 
 
+################################################################################
+
+
+class AppPage_DefaultRedirect(webapp.RequestHandler):
+  def get(self):
+    self.redirect("/")
+
+
+class AppPage_SignoutRedirect(webapp.RequestHandler):
+  def get(self):
+    self.redirect(users.create_logout_url('/'))
+
+
+class AppPage_SigninRedirect(webapp.RequestHandler):
+  def get(self):
+    self.redirect(users.create_login_url('/'))
+
+
 class AppPage_Default(webapp.RequestHandler):
 
   def __init__(self):
@@ -350,22 +152,25 @@ class AppPage_Default(webapp.RequestHandler):
     um = spmuser.UserManager()
     spm_loggedin_user = um.GetSPMUserByLoggedInGoogleAccount()
 
-    outbuf = []
-    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append('<div class="simple">A simple way to send bills to friends.</div>')
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
+
     if spm_loggedin_user:
-      outbuf.append('<div class="compact">Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.</div>')
+      page.AppendText('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
     else:
-      outbuf.append('<div class="compact">Not logged in.  You should <a href="/signin">sign in</a>.</div>')
-    outbuf.append(CreateFooter())
-    self.response.out.write('\n'.join(outbuf))
+      page.AppendText('Not logged in.  You should <a href="/signin">sign in</a>.')
+
+    self.response.out.write(page.Render())
 
 
 class AppPage_Send(webapp.RequestHandler):
   """Login required."""
 
 
-  def ReserveNextSerialsTransaction(self, spm_name, number_to_reserve):
+  def __ReserveNextSerialsTransaction(self, spm_name, number_to_reserve):
     """ Run this function as a transaction.  Reserves the next serial numbers."""
 
     count_record = None
@@ -425,19 +230,14 @@ class AppPage_Send(webapp.RequestHandler):
   <div><input type="submit" value="Send Email" /></div>
 </form>"""
 
-    outbuf = []
-    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append('<div class="simple">')
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
 
-    outbuf.append(_PAGE_CONTENT % {
-      'posturl': self.request.path,
-    })
-
-    outbuf.append('</div>')
-    outbuf.append(CreateFooter())
-    self.response.out.write('\n'.join(outbuf))
-    
-    return
+    page.AppendText(_PAGE_CONTENT % {'posturl': self.request.path})
+    self.response.out.write(page.Render())
 
 
   def post(self):
@@ -508,7 +308,7 @@ class AppPage_Send(webapp.RequestHandler):
     
     # reserve id for this
     reserved_url_serial = db.run_in_transaction(
-      self.ReserveNextSerialsTransaction, newcr_spm_name, 1
+      self.__ReserveNextSerialsTransaction, newcr_spm_name, 1
     )
 
     item_count = 0
@@ -612,8 +412,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       spm_loggedin_user
     )
 
-    _OTHER_DIVIDER_LINE = '<div class="compact">For other things (invoices not sent with sopay.me)</div>'
-    _RECORD_DIVIDER_LINE = '<div class="compact">For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)</div>'
+    _OTHER_STRING = 'For other things (invoices not sent with sopay.me)'
+    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
 
     # group the records into a dict of lists keyed off of url. to be considered
     # in a grouping, the record must have a c14n url and a valid date_sent set,
@@ -624,11 +424,11 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     for record in records:
       key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
       if not key_url:
-        key_url = _OTHER_DIVIDER_LINE
+        key_url = _OTHER_STRING
       else:
         # use split url so we get the nice three-digit formatting for #
         split_url = key_url.split('/') # (''/'for'/'name'/'serial')
-        key_url = _RECORD_DIVIDER_LINE % ({
+        key_url = _RECORD_STRING % ({
           'forpart': split_url[2], 
           'serialpart': split_url[3],
         })
@@ -644,7 +444,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     list_to_sort = []
     for url in sort_buckets.keys():
       date_max = datetime(1985,9,17)
-      if not url == _OTHER_DIVIDER_LINE:
+      if not url == _OTHER_STRING:
         for record in sort_buckets[url]:
           if record.date_latest > date_max:
             date_max = record.date_latest
@@ -653,27 +453,23 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
 
     ##### start rendering page #####
 
-    outbuf = []
-    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append(_PAGE_SIMPLEDIV % {
-      'message': (
-        'Payment updates from Google Checkout may take up to an hour to appear. '
-        '<a href="/a?sync=1">Refresh the last day now.</a>'
-        # TODO: remove this message when sync gets moved to cron
-      )
-    })
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
 
-    # render the records
+    page.AppendNote(
+      'Payment updates from Google Checkout may take up to an hour to appear. '
+      'Admins can <a href="/admin/force?days=1">refresh</a> the last day.'
+    )
+
     for date, url_key in list_to_sort:
-      outbuf.append(url_key)
+      page.AppendCompact(url_key)
       for record in sort_buckets[url_key]:
-        hoverline = CreateHoverLine(record, linkify=True, useragent=self.request.headers.get('user_agent'))
-        for line in hoverline:
-          outbuf.append(line)
+        page.AppendHoverRecord(record = record, linkify = True)
 
-    # finish
-    outbuf.append(CreateFooter())
-    self.response.out.write('\n'.join(outbuf))
+    self.response.out.write(page.Render())
 
 
 class AppPage_StaticPaylink(webapp.RequestHandler):
@@ -703,42 +499,37 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       return
     self._TITLE = SPM + ' for ' + parsed_url['name']
 
-    ##### start rendering page #####
-
-    records_shown = False
-
-    outbuf = []
-    outbuf.append(CreateHeader(self._TITLE, self.request.headers.get('user_agent')))
-    outbuf.append(_PAGE_SIMPLEDIV % {
-      'message': 'Payment updates from Google Checkout may take up to an hour to appear.'
-    })
-
     # query this as an iterable instead of fetch so we get them all
     records = db.GqlQuery(
       'SELECT * FROM PurchaseRecord '
       'WHERE spm_name = :1 AND spm_serial = :2',
       parsed_url['name'], parsed_url['serial']
     )
+
+    ##### start rendering page #####
+
+    records_shown = False
+
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
+
+    page.AppendNote(
+      'Payment updates from Google Checkout may take up to an hour to appear.'
+    )
+
     for record in records:
       records_shown = True
-      # TODO lookup seller as well
-      hoverline = CreateHoverLine(record, linkify=False, useragent=self.request.headers.get('user_agent'))
-      for line in hoverline:
-        outbuf.append(line)
-
-    outbuf.append(CreateFooter())
-
-    # for now, alwasys show the checkout button
-    #if records[0].checkout_payurl:
-    #  outbuf.append(_CHECKOUT_BUTTON_HTML % {'button_url': records[0].checkout_payurl})
-    #outbuf.append(CreateFooter())
+      page.AppendHoverRecord(record = record, linkify = False)
 
     # if there aren't any records, there's nothing to show
     if not records_shown:
       self.redirect('/')
       return
     else:
-      self.response.out.write('\n'.join(outbuf))
+      self.response.out.write(page.Render())
 
 
 ################################################################################
@@ -748,9 +539,9 @@ application = webapp.WSGIApplication([
   # Background task queues
   ('/task/checkout', TaskPage_SyncCheckout),
   ('/task/synccron', TaskPage_SyncCron),
-  # User-facing functional pages
-  #('/connections', AppPage_Connections),
-  ('/a', AppPage_Admin),
+  # Admin access only
+  ('/admin/.*', AdminPage_Main),
+  # User-facing
   ('/now', AppPage_Send),
   ('/everything', AppPage_PaymentHistory),
   ('/signout.*', AppPage_SignoutRedirect),

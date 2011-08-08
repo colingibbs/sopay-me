@@ -11,5 +11,8 @@ handlers:
 - url: /task/.*
   script: main.py
   login: admin
+- url: /admin/.*
+  script: main.py
+  login: admin
 - url: /.*
   script: main.py

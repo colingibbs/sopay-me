@@ -411,14 +411,14 @@ class CheckoutSellerIntegration:
 
     # sort basd on type
     new_order_list = []
-    order_update_list = []
+    charged_list = []
     for notify in aggregate_list:
       # TODO this should probably be db.run_in_transaction(self.__ApplyTransaction, notify)
       notification_primary = notify['sopay-me/google-type']
       if notification_primary == 'new-order-notification':
         new_order_list.append(notify)
       elif notification_primary == 'charge-amount-notification':
-        order_update_list.append(notify)
+        charged_list.append(notify)
       elif notification_primary == 'order-state-change-notification':
         pass
       elif notification_primary == 'risk-information-notification':
@@ -430,12 +430,15 @@ class CheckoutSellerIntegration:
     # the record to be in the system with details first before we update it)
     for notify in new_order_list:
       self.__ApplyTransaction(notify)
-    for notify in order_update_list:
+    for notify in charged_list:
       self.__ApplyTransaction(notify)      
     
-    # record that we've just synced this
+    # store that we've just synced this
     self.spm_seller_user.checkout_last_sync = datetime.utcnow()
     self.spm_seller_user.put()
+    
+    # return list for debug dumps
+    return aggregate_list
 
 
   def GetPaymentUrl(self, spm_full_id, description, amount, currency='USD'):
