@@ -67,34 +67,36 @@ class AppPage_Debug(webapp.RequestHandler):
 
     ### functional things ###
 
-    if self.request.path == '/debug/force' && spm_loggedin_user.checkout_verified:
-      sync_value = self.request.get('days')
-      if not sync_value:
-        sync_value = 180
-      else:
-        sync_value = long(sync_value)
-      outbuf.append('Starting background task to sync ' + str(sync_value) + ' days.')
-      # TODO: move this to a background cron job or user-facing button
-      taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
-        'user_key': spm_loggedin_user.key(),
-        'sync_value': sync_value,
-      })
+    if spm_loggedin_user.checkout_verified:
+
+      if self.request.path == '/debug/force': 
+        sync_value = self.request.get('days')
+        if not sync_value:
+          sync_value = 180
+        else:
+          sync_value = long(sync_value)
+        outbuf.append('Starting background task to sync ' + str(sync_value) + ' days.')
+        # TODO: move this to a background cron job or user-facing button
+        taskqueue.add(queue_name='syncqueue', url='/task/checkout', params={
+          'user_key': spm_loggedin_user.key(),
+          'sync_value': sync_value,
+        })
   
-    elif self.request.path == '/debug/dump' && spm_loggedin_user.checkout_verified:
-      sync_value = self.request.get('days')
-      if not sync_value:
-        sync_value = 1
-      else:
-        sync_value = long(sync_value)
-      right_now = datetime.utcnow() + timedelta(minutes = -6)      
-      start_time = right_now + timedelta(days = (sync_value*-1))
-      if start_time < right_now:
-        checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
-        history = checkout.GetHistory(
-          utc_start = start_time,
-          utc_end = right_now
-        )
-      outbuf.append(pp.pformat(history))
+      elif self.request.path == '/debug/dump':
+        sync_value = self.request.get('days')
+        if not sync_value:
+          sync_value = 1
+        else:
+          sync_value = long(sync_value)
+        right_now = datetime.utcnow() + timedelta(minutes = -6)      
+        start_time = right_now + timedelta(days = (sync_value*-1))
+        if start_time < right_now:
+          checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
+          history = checkout.GetHistory(
+            utc_start = start_time,
+            utc_end = right_now
+          )
+        outbuf.append(pp.pformat(history))
   
     outbuf.append('</pre></body>')
     self.response.out.write('\n'.join(outbuf))
