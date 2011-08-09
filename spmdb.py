@@ -26,7 +26,11 @@ class SPMUser(db.Model):
     string += 'checkout_verified        [' + strEmpty(self.checkout_verified) + ']\n'
     string += 'checkout_last_sync       [' + strEmpty(self.checkout_last_sync) + ']\n'
     string += 'checkout_merchant_id     [' + strEmpty(self.checkout_merchant_id) + ']\n'
-    string += 'checkout_merchant_secret [' + strEmpty(self.checkout_merchant_secret) + ']\n'
+    if self.checkout_merchant_secret:
+      text_secret = 'Present'
+    else:
+      text_secret = None
+    string += 'checkout_merchant_secret [' + strEmpty(text_secret) + ']\n'
     string += 'last_login               [' + strEmpty(self.last_login) +  ']\n'
     return string
 
@@ -57,6 +61,7 @@ class PurchaseRecord(db.Model):
   date_sent = db.DateTimeProperty()
   # date_accepted = db.DateTimeProperty()
   date_paid = db.DateTimeProperty()
+  date_cancelled = db.DateTimeProperty() # used for refunding
 
   amount = db.StringProperty()
   currency = db.StringProperty()

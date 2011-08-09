@@ -303,17 +303,17 @@ class CheckoutSellerIntegration:
       if not this_record.SPMUser_buyer:
         um = spmuser.UserManager()
         this_record.SPMUser_buyer = um.GetSPMUserByEmail(notification_checkout_buyer_email)
-      
+      # if there isn't a user name for this user (i.e., this was just created
+      # a few lines above), then let's this_recorde-populate it
+      if not this_record.SPMUser_buyer.name:
+        this_record.SPMUser_buyer.name = notification_checkout_buyer_name
+        this_record.SPMUser_buyer.put()
+
       this_record.checkout_buyer_email = notification_checkout_buyer_email
       # this is only useful for helping backfill from non-spm stuff
       if not this_record.sent_to_email:
         this_record.sent_to_email = notification_checkout_buyer_email
       this_record.checkout_buyer_name = notification_checkout_buyer_name
-      # if there isn't a user name for this user (i.e., this was just created
-      # a few lines above), then let's this_recorde-populate it
-      if not this_record.SPMUser_buyer:
-        this_record.SPMUser_buyer.name = notification_checkout_buyer_name
-        this_record.SPMUser_buyer.put()
       this_record.checkout_buyer_id = notification_checkout_buyer_id
       this_record.amount = notification_amount
       this_record.currency = notification_currency
@@ -327,13 +327,22 @@ class CheckoutSellerIntegration:
     elif notification_primary == 'charge-amount-notification':
 
       if not this_record:
-        logging.critical('Payment update found with no record in system.  This is most likely an ordering issue.')
-
+        logging.error('(spmcheckout) Charge-amount-notificaiton found with no record in system.  This is most likely an ordering issue.')
       else:
-        notification_date_paid = self.__ParseCheckoutTime(notify['timestamp'])
-        this_record.date_paid = notification_date_paid
-        if not this_record.date_latest or this_record.date_paid > this_record.date_latest:
-          this_record.date_latest = this_record.date_paid
+        notification_date = self.__ParseCheckoutTime(notify['timestamp'])
+        this_record.date_paid = notification_date
+        if not this_record.date_latest or notification_date > this_record.date_latest:
+          this_record.date_latest = notification_date
+
+    elif notification_primary == 'refund-amount-notification':
+  
+      if not this_record:
+        logging.error('(spmcheckout) Refund-amount-notification found with no record in system.  This is most likely an ordering issue.')
+      else:
+        notification_date = self.__ParseCheckoutTime(notify['timestamp'])
+        this_record.date_cancelled = notification_date
+        if not this_record.date_latest or notification_date > this_record.date_latest:
+          this_record.date_latest = notification_date
 
     # perform a common set of updates
     if this_record:
@@ -351,13 +360,6 @@ class CheckoutSellerIntegration:
 
   def GetHistory(self, utc_start, utc_end):
     """Sends a request to google checkout using supplied arguments.
-  
-    ARGS:
-      merchant_id: string with merchant id number
-      merchant_key: string with merchant auth key
-  
-    RETURNS:
-      dict of all notifications
     """
 
     _REQUEST_FIRST_PAGE = """
@@ -412,6 +414,7 @@ class CheckoutSellerIntegration:
     # sort basd on type
     new_order_list = []
     charged_list = []
+    refund_list = []
     for notify in aggregate_list:
       # TODO this should probably be db.run_in_transaction(self.__ApplyTransaction, notify)
       notification_primary = notify['sopay-me/google-type']
@@ -423,8 +426,12 @@ class CheckoutSellerIntegration:
         pass
       elif notification_primary == 'risk-information-notification':
         pass
+      elif notification_primary == 'refund-amount-notification':
+        refund_list.append(notify)
       else:
-        logging.critical('Unexpected primary_type in parsing checkout response')
+        logging.warning('Unexpected primary_type in parsing checkout response')
+        logging.warning(str(notification_primary))
+        logging.warning(str(notify))
 
     # do new order notification first to avoid checkout id collisions (we want
     # the record to be in the system with details first before we update it)
@@ -432,6 +439,9 @@ class CheckoutSellerIntegration:
       self.__ApplyTransaction(notify)
     for notify in charged_list:
       self.__ApplyTransaction(notify)      
+    for notify in refund_list:
+      self.__ApplyTransaction(notify)
+    
     
     # store that we've just synced this
     self.spm_seller_user.checkout_last_sync = datetime.utcnow()

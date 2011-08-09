@@ -128,7 +128,7 @@ class NewPage():
       else:
         url_seller_picture = ''
     else:
-      logging.debug('Trying to render hover line, SPMUser_sentto is none.')
+      logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
       text_seller = 'ERROR: No user found'
       text_email = 'ERROR: No user found'
       url_seller_picture = ''
@@ -174,7 +174,10 @@ class NewPage():
     # paid information
     text_paid = 'Not paid'
     div_paid = '<div class="icon no"></div>'
-    if record.date_paid:
+    if record.date_cancelled:
+      text_paid = 'Cancelled'
+      div_paid = '<div class="icon maybe"></div>'
+    elif record.date_paid:
       text_paid = (
         'Paid on ' + record.date_paid.strftime(_JUST_MONTH) + ' ' +
          str(long(record.date_paid.strftime(_JUST_DAY)))
@@ -190,11 +193,13 @@ class NewPage():
       if record.spm_name:
         pass # use default values from above
       else:
-        # in this case we don't have a payment date and we don't have a spm_name
+        # in this case we don't have a payment/cancel date or a spm_name
         # record indicating this was created by us.  This should never happen.
-        logging.critical('Impossible situation.  Wtf.  Key=' + str(record.key()) + 
-          ' Description=' + record.description)
-        pass
+        logging.warning(
+          '(spmbuilder) Rendering record. Both spm_name and payment date ' +
+          'are missing.  This should not happen.  Key [' + str(record.key()) + 
+          '] Description [' + record.description + ']'
+        )
 
     # no hover on mobile
     if c14n_url and linkify:
@@ -214,7 +219,7 @@ class NewPage():
     </div>
     <div class="boxl-vparent boxl-content col-desc">
       <div class="boxl-spacer"></div>
-      <div class="boxl-content text shrinky">%(text_description)s</div>
+      <div class="boxl-content text">%(text_description)s</div>
       <div class="boxl-content text shrinky">%(div_paid)s%(text_paid)s</div>
       <div class="boxl-spacer"></div>
     </div>

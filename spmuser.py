@@ -71,19 +71,19 @@ class UserManager():
     elif len(userlist) == 0 and create_new:
       # check to see if we already have an implicit account with that address,
       # and if not, just create one with that address
-      logging.info('Using implicit login to create new account: ' + google_account.email())
+      logging.info('Using implicit login to create new account [' + google_account.email() + ']')
       spm_user = self.GetSPMUserByEmail(google_account.email(), create_new = True)
 
     elif len(userlist) == 0 and not create_new:
-      logging.debug('Choosing not to create user, returning None')
+      logging.debug('Choosing not to create user [' + google_account.email() + '] returning None')
 
     else:
-      logging.critical('Query returned more than one google_account.')
+      logging.critical('Query for [' + google_account.email() + '] returned more than one google_account.')
   
     if spm_user:
       # make sure google account is linked
       if not spm_user.google_account:
-        logging.info('Linking google account to existing SPMUser: ' + google_account.email())
+        logging.info('Also linking google account to existing SPMUser [' + google_account.email() + ']')
         spm_user.google_account = google_account
       spm_user.last_login = datetime.utcnow()
       spm_user.put()

@@ -64,6 +64,7 @@ class AppPage_Debug(webapp.RequestHandler):
     outbuf.append('\nFYI, valid paths are:')
     outbuf.append('  /debug/force?days=1 to force a checkout sync')
     outbuf.append('  /debug/dump?days=1 to see raw checkout api response')  
+    outbuf.append('\n===INFO===\n')
 
     ### functional things ###
 
@@ -115,8 +116,8 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
     spm_user_to_run = db.get(user_key)
     sync_value = long(self.request.get('sync_value'))
     
-    logging.debug('Task SyncCheckout user_key ' + user_key)
-    logging.debug('Task SyncCheckout sync_value ' + str(sync_value))
+    logging.debug('Task SyncCheckout starting.  User_key [' + user_key + ']' + 
+                  ' sync_value [' + str(sync_value) + ']')
 
     if not spm_user_to_run or not sync_value:
       return
@@ -129,6 +130,8 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
         utc_start = start_time,
         utc_end = right_now
       )
+
+    logging.debug('Task SyncCheckout complete.  User_key [' + user_key + ']')
 
 
 class TaskPage_SyncCron(webapp.RequestHandler):
@@ -281,6 +284,8 @@ class AppPage_Send(webapp.RequestHandler):
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
     )
+
+    page.AppendSpaced('There\'s like, uh, no input validation on this page. You can and will break it if you\'re dumb.')
 
     page.AppendText(_PAGE_CONTENT % {'posturl': self.request.path})
     self.response.out.write(page.Render())
@@ -517,9 +522,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendSpaced(
-      'Note that payment updates from Google Checkout may take up to an hour to appear. '
-    )
+    page.AppendSpaced('Send a new invoice <a href="/now"> now</a>.')
 
     for date, url_key in list_to_sort:
       page.AppendCompact(url_key)
