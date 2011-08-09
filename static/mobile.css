@@ -4,7 +4,6 @@ html, body {
 }
 
 #title {
-  margin: 0;
   padding: 16px 8px;
   border-top: 1px solid #E5E5E5;
 }
@@ -21,7 +20,7 @@ input {
 
 /* Highlighted lists page: ui containers */
 
-.lineerror, .simple {
+.fullline {
   margin: 0;
   padding: 8px 8px;
   border-top: 1px solid #E5E5E5;
@@ -34,7 +33,7 @@ input {
   border-top: 1px solid #E5E5E5;
 }
 
-.linehover, .linenohover {
+.simple, .linehover, .linenohover {
   margin: 0;
   padding: 4px 8px;
   border-top: 1px solid #E5E5E5;

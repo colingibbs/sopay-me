@@ -13,14 +13,13 @@ body {
 
 
 #title {
-  margin: 0;
   padding: 21px 30px;
   border-bottom: 1px solid #E5E5E5;
 }
 
 /* Highlighted lists page: ui containers */
 
-.lineerror, .simple {
+.fullline {
   margin: 0;
   padding: 21px 30px;
 }
@@ -33,7 +32,7 @@ body {
   border-top: 1px solid #E5E5E5;
 }
 
-.linehover, .linenohover {
+.simple, .linehover, .linenohover {
   margin: 0;
   padding: 4px 30px;
 }

@@ -13,11 +13,16 @@ a:visited { color: #6611CC }
 a:active { color: #D14836 }
 
 #title {
+  margin: 0;
   background-color: #F5F5F5;
-
   color: #D14836;
+}
+.titletext {
   font-size: 20px;
-  font-weight: normal;
+}
+.titlesecondary {
+  color: #D14836;
+  font-size: 11px;
 }
 
 #navbar {

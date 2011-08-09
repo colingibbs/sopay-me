@@ -185,14 +185,15 @@ class AppPage_Default(webapp.RequestHandler):
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
+      user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
     )
 
     if spm_loggedin_user:
-      page.AppendText('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
+      page.AppendSpaced('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
     else:
-      page.AppendText('Not logged in.  You should <a href="/signin">sign in</a>.')
+      page.AppendSpaced('Not logged in.  You should <a href="/signin">sign in</a>.')
 
     self.response.out.write(page.Render())
 
@@ -272,6 +273,7 @@ class AppPage_Send(webapp.RequestHandler):
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
+      user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
     )
@@ -506,13 +508,13 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
+      user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendNote(
-      'Payment updates from Google Checkout may take up to an hour to appear. '
-      'Admins can <a href="/admin/force?days=1">refresh</a> the last day.'
+    page.AppendSpaced(
+      'Note that payment updates from Google Checkout may take up to an hour to appear. '
     )
 
     for date, url_key in list_to_sort:
@@ -574,12 +576,13 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
+      user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendNote(
-      'Payment updates from Google Checkout may take up to an hour to appear.'
+    page.AppendSpaced(
+      'Note that payment updates from Google Checkout may take up to an hour to appear.'
     )
 
     for record in records:

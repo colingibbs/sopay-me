@@ -1,6 +1,3 @@
-
-
-# local imports
 import spmdb
 from spmutil import *
 
@@ -10,7 +7,7 @@ from spmutil import *
 
 class NewPage():
 
-  def __init__(self, title, useragent, uideb):
+  def __init__(self, title, user, useragent, uideb):
     """Initializes a new page with useragent (to detect mobile or not)."""
 
     # set is_mobile based on useragent.  TODO: expand this to be more intelligent
@@ -24,58 +21,86 @@ class NewPage():
       self.is_mobile = True
     
     self.title = title
-    
+    self.logged_in_text = 'Not logged in.'
+    if user:
+      if user.google_account.email():
+        self.logged_in_text = user.google_account.email()
+
     # clear the buffer
     self.pagebuffer = []
 
 
   def Render(self):
 
-    render = []
+    _MOBILE_HEADER = \
+"""<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="HandheldFriendly" content="true" />
+  <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />
+  <title>%(title)s</title>
+  <link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
+  <link rel="stylesheet" type="text/css" href="/static/mobile.css" />
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-17941280-2']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+</head>
+<body>
+  <div id="title"><div class="titletext boxl-content">%(title)s</div></div>
+  <div class="compact titlesecondary">%(login)s</div>
+"""
 
-    _PAGE_HEADER = \
+    _DESKTOP_HEADER = \
 """<!DOCTYPE HTML>
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
   <title>%(title)s</title>
   <link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
-  <link rel="stylesheet" type="text/css" href="%(css)s" />
-%(additional)s
-<script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-17941280-2']);
-  _gaq.push(['_trackPageview']);
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
-</script>
+  <link rel="stylesheet" type="text/css" href="/static/desktop.css"" />
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-17941280-2']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
 </head>
 <body>
-  <div id="title">%(title)s</div>"""
-
-    _MOBILE_META = \
-"""<meta name="HandheldFriendly" content="true" />
-<meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />"""
+  <div id="title" class="boxl-hparent">
+    <div class="titletext boxl-content">%(title)s</div>
+    <div class="boxl-spacer"></div>
+    <div class="titlesecondary boxl-content">%(login)s</div>
+  </div>"""
 
     _PAGE_FOOTER = \
-"""<div class="simple"></div>
+"""<div class="fullline"></div>
 </body>
-<!-- Copyright 2011 sopay.me -->"""
+<!-- Copyright 2011 sopay.me -->
+"""
+
+    render = []
 
     if self.is_mobile:
-      render.append(_PAGE_HEADER % {
+      render.append(_MOBILE_HEADER % {
         'title': self.title,
-        'css': '/static/mobile.css',
-        'additional': _MOBILE_META,
+        'login': self.logged_in_text,
       })
     else:
-      render.append(_PAGE_HEADER % {
+      render.append(_DESKTOP_HEADER % {
         'title': self.title,
-        'css': '/static/desktop.css',
-        'additional': '',
+        'login': self.logged_in_text,
       })
 
     render.append('\n'.join(self.pagebuffer))
@@ -251,21 +276,15 @@ class NewPage():
       'text_paynow': text_paynow,
     })
 
-  
-#  def AppendError(self, message):
-#    _PAGE_INLINE_
-#    ERROR = '<div class="lineerror"><strong>ERROR:</strong> %(message)s</div>'
-#    self.pagebuffer.append(_PAGE_INLINE_ERROR % ({'message': message}))
-
 
   def AppendCompact(self, message):
     _PAGE_INLINE_COMPACT = '<div class="compact">%(message)s</div>'
     self.pagebuffer.append(_PAGE_INLINE_COMPACT % ({'message': message}))
 
 
-  def AppendNote(self, message):
-    _PAGE_INLINE_NOTE = '<div class="simple"><strong><em>NOTE:</em></strong> %(message)s</div>'
-    self.pagebuffer.append(_PAGE_INLINE_NOTE % ({'message': message}))
+  def AppendSpaced(self, message):
+    _PAGE_INLINE = '<div class="fullline">%(message)s</div>'
+    self.pagebuffer.append(_PAGE_INLINE % ({'message': message}))
 
 
   def AppendText(self, message):
