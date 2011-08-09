@@ -172,8 +172,7 @@ class NewPage():
     _YMD_TIME = '%Y-%m-%d'
 
     # paid information
-    text_paid = 'Not paid'
-    div_paid = '<div class="icon no"></div>'
+
     if record.date_cancelled:
       text_paid = 'Cancelled'
       div_paid = '<div class="icon maybe"></div>'
@@ -181,7 +180,6 @@ class NewPage():
       text_paid = (
         'Paid on ' + record.date_paid.strftime(_JUST_MONTH) + ' ' +
          str(long(record.date_paid.strftime(_JUST_DAY)))
-        # + ' (' + record.checkout_key +')' # todo linkify this
       )
       div_paid = '<div class="icon yes"></div>'
       if record.SPMUser_buyer:
@@ -190,16 +188,14 @@ class NewPage():
         elif record.SPMUser_buyer.email:
           text_paid += ' by ' + record.SPMUser_buyer.email
     else:
+      # created with sopay.me and not paid
       if record.spm_name:
-        pass # use default values from above
+        text_paid = 'Not paid'
+        div_paid = '<div class="icon no"></div>'
+      # not created with sopay.me and not paid (cancelled out-of-band)
       else:
-        # in this case we don't have a payment/cancel date or a spm_name
-        # record indicating this was created by us.  This should never happen.
-        logging.warning(
-          '(spmbuilder) Rendering record. Both spm_name and payment date ' +
-          'are missing.  This should not happen.  Key [' + str(record.key()) + 
-          '] Description [' + record.description + ']'
-        )
+        text_paid = 'Not paid, not from sopay.me'
+        div_paid = '<div class="icon maybe"></div>'
 
     # no hover on mobile
     if c14n_url and linkify:
