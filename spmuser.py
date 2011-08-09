@@ -87,12 +87,6 @@ class UserManager():
         spm_user.google_account = google_account
       spm_user.last_login = datetime.utcnow()
       spm_user.put()
-  
-    # TODO remove this block when whitelist
-    if spm_user:
-      if not spm_user.checkout_verified:
-        logging.warning('PRIVATE BETA: User login denied ' + spm_user.email)
-        return None
 
     return spm_user
     
