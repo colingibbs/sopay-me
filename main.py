@@ -67,7 +67,7 @@ class AppPage_Debug(webapp.RequestHandler):
 
     ### functional things ###
 
-    if self.request.path == '/debug/force':
+    if self.request.path == '/debug/force' && spm_loggedin_user.checkout_verified:
       sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 180
@@ -80,7 +80,7 @@ class AppPage_Debug(webapp.RequestHandler):
         'sync_value': sync_value,
       })
   
-    elif self.request.path == '/debug/dump':
+    elif self.request.path == '/debug/dump' && spm_loggedin_user.checkout_verified:
       sync_value = self.request.get('days')
       if not sync_value:
         sync_value = 1
@@ -104,7 +104,8 @@ class AppPage_Debug(webapp.RequestHandler):
 
 
 class TaskPage_SyncCheckout(webapp.RequestHandler):
-  """Runs sync checkout in the background.  Admin only access (app.yaml)"""
+  """Runs sync checkout in the background.
+  Admin only access (app.yaml)"""
 
   def post(self):
 
@@ -129,7 +130,8 @@ class TaskPage_SyncCheckout(webapp.RequestHandler):
 
 
 class TaskPage_SyncCron(webapp.RequestHandler):
-  """Runs sync checkout in the background for all users with checkout_verified.  Admin only access (app.yaml)"""
+  """Runs sync checkout in the background for all checkout_verified.
+  Admin only access (app.yaml)"""
 
   def get(self):
 
