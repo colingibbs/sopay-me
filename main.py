@@ -380,7 +380,7 @@ class AppPage_Send(webapp.RequestHandler):
       new_pr.date_sent = datetime.utcnow()
       new_pr.date_latest = new_pr.date_sent
       new_pr.sent_to_email = email
-      new_pr.SPMUser_sentto = um.GetSPMUserByEmail(email)
+      new_pr.SPMUser_sentto = user_manager.GetSPMUserByEmail(email)
 
       spmid = BuildSPMID(
         name = new_pr.spm_name,
@@ -412,7 +412,7 @@ class AppPage_Send(webapp.RequestHandler):
         # have to use logged-in users email address or appengine won't send
         from_email = spm_loggedin_user.google_account.email(),
       )
-      spm_to_user = um.GetSPMUserByEmail(email)
+      spm_to_user = user_manager.GetSPMUserByEmail(email)
       emailer.SendEmail(
         to_name = spm_to_user.name,
         to_email = email,
