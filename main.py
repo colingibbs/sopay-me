@@ -198,7 +198,10 @@ class AppPage_Default(webapp.RequestHandler):
     )
 
     if spm_loggedin_user:
-      page.AppendSpaced('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
+      if spm_loggedin_user.checkout_verified:
+        page.AppendSpaced('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
+      else:
+        page.AppendSpaced('Logged in, but you don\'t have a checkout seller account set up. Email Zach for access.')
     else:
       page.AppendSpaced('Not logged in.  You should <a href="/signin">sign in</a>.')
 
