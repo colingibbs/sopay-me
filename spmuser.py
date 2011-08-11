@@ -97,7 +97,7 @@ class UserManager():
     spm_loggedin_user = self.__GetSPMUserByGoogleAccount(users.get_current_user())
     if users.is_current_user_admin():
       if sudo_email:
-        sudo_user = self.GetSPMUserByEmail(sudo_as, create_new = False)
+        sudo_user = self.GetSPMUserByEmail(sudo_email, create_new = False)
         if sudo_user:
           spm_loggedin_user = sudo_user
     return spm_loggedin_user
