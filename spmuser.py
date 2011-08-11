@@ -53,7 +53,7 @@ class UserManager():
     return spm_user
 
 
-  def GetSPMUserByLoggedInGoogleAccount(self, google_account, create_new = True):
+  def __GetSPMUserByGoogleAccount(self, google_account, create_new = True):
     """TODO"""
 
     # google accounts login check
@@ -89,5 +89,16 @@ class UserManager():
       spm_user.put()
 
     return spm_user
-    
+
+
+  def GetSPMUser(self, sudo_email):
+    """Performs login check.  Overrides if sudo specified and admin.  Returns spm_user db object."""
+
+    spm_loggedin_user = self.__GetSPMUserByGoogleAccount(users.get_current_user())
+    if users.is_current_user_admin():
+      if sudo_email:
+        sudo_user = self.GetSPMUserByEmail(sudo_as, create_new = False)
+        if sudo_user:
+          spm_loggedin_user = sudo_user
+    return spm_loggedin_user
     
