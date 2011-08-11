@@ -1,7 +1,7 @@
 application: sopay-me
-# In version control and testing, use latest date.  To publish, change to
+# In version control and testing, use version: 'id-test'.  To publish, change to
 # 'live' but do not sumbit back to source control with 'version: live'
-version: 20110809
+version: zpm-test
 runtime: python
 api_version: 1
 
