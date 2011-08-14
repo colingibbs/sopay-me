@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="HandheldFriendly" content="true" />
+  <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />
+  <title>{{ title }}</title>
+  <link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
+  <link rel="stylesheet" type="text/css" href="/static/mobile.css" />
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-17941280-2']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+</head>
+<body>
+  <div id="title"><div class="titletext boxl-content">{{ title }}</div></div>
+  <div class="compact titlesecondary">{{ login }}</div>
+  {{ body_content }}
+<div class="fullline"></div>
+</body>
+<!-- Copyright 2011 sopay.me -->

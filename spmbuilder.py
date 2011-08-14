@@ -1,6 +1,9 @@
 import spmdb
 from spmutil import *
 
+import os
+from google.appengine.ext.webapp import template
+
 
 ################################################################################
 
@@ -32,81 +35,20 @@ class NewPage():
 
   def Render(self):
 
-    _MOBILE_HEADER = \
-"""<!DOCTYPE HTML>
-<html>
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <meta name="HandheldFriendly" content="true" />
-  <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no" />
-  <title>%(title)s</title>
-  <link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
-  <link rel="stylesheet" type="text/css" href="/static/mobile.css" />
-  <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-17941280-2']);
-    _gaq.push(['_trackPageview']);
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-  </script>
-</head>
-<body>
-  <div id="title"><div class="titletext boxl-content">%(title)s</div></div>
-  <div class="compact titlesecondary">%(login)s</div>
-"""
-
-    _DESKTOP_HEADER = \
-"""<!DOCTYPE HTML>
-<html>
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>%(title)s</title>
-  <link rel="stylesheet" type="text/css" href="/static/sopayme.css" />
-  <link rel="stylesheet" type="text/css" href="/static/desktop.css"" />
-  <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-17941280-2']);
-    _gaq.push(['_trackPageview']);
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-  </script>
-</head>
-<body>
-  <div id="title" class="boxl-hparent">
-    <div class="titletext boxl-content">%(title)s</div>
-    <div class="boxl-spacer"></div>
-    <div class="titlesecondary boxl-content">%(login)s</div>
-  </div>"""
-
-    _PAGE_FOOTER = \
-"""<div class="fullline"></div>
-</body>
-<!-- Copyright 2011 sopay.me -->
-"""
-
-    render = []
-
     if self.is_mobile:
-      render.append(_MOBILE_HEADER % {
-        'title': self.title,
-        'login': self.logged_in_text,
-      })
+      path_file = 'templates/mobile.html'
     else:
-      render.append(_DESKTOP_HEADER % {
-        'title': self.title,
-        'login': self.logged_in_text,
-      })
+      path_file = 'templates/desktop.html'
 
-    render.append('\n'.join(self.pagebuffer))
-    render.append(_PAGE_FOOTER)
+    path = os.path.join(os.path.dirname(__file__), path_file)
 
-    return '\n'.join(render)
+    template_values = {
+      'title': self.title,
+      'login': self.logged_in_text,
+      'body_content': '\n'.join(self.pagebuffer),
+    }
+
+    return template.render(path, template_values)
 
   
   def AppendHoverRecord(self, record, linkify):
@@ -205,66 +147,16 @@ class NewPage():
 
     ### actually start rendering ###
 
-    __DESKTOP = \
-"""%(opendiv_linestyle)s
-  <div class="boxl-hparent">
-    <div class="boxl-vparent boxl-content col-amount">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content"><span class="amount"><span class="currency">%(text_currency)s&nbsp;</span>%(text_amount)s</span></div>
-      <div class="boxl-spacer"></div>
-    </div>
-    <div class="boxl-vparent boxl-content col-desc">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content text">%(text_description)s</div>
-      <div class="boxl-content text shrinky">%(div_paid)s%(text_paid)s</div>
-      <div class="boxl-spacer"></div>
-    </div>
-    <div class="boxl-vparent boxl-content col-face">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\');"></div>
-      <div class="boxl-spacer"></div>
-    </div>
-    <div class="boxl-vparent boxl-content col-annotation">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content text shrinky">%(text_seller)s</div>
-      <div class="boxl-content smalltext shrinky">%(text_email)s</div>
-      <div class="boxl-spacer"></div>
-    </div>
-    <div class="boxl-vparent boxl-content col-paidbutton">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content text">%(text_paynow)s</div>
-      <div class="boxl-spacer"></div>
-    </div>
-  </div>
-</div>"""
-
-    __MOBILE = \
-"""%(opendiv_linestyle)s
-  <div class="boxl-hparent">
-    <div class="boxl-vparent boxl-content col-mobileleft">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content profile40" style="background-image:url(\'%(url_seller_picture)s\');"></div>
-      <div class="boxl-spacer"></div>
-    </div>
-    <div class="boxl-vparent boxl-content col-mobileright">
-      <div class="boxl-spacer"></div>
-      <div class="boxl-content text shrinky"><span class="amount"><span class="currency">%(text_currency)s&nbsp;</span>%(text_amount)s</span></div>
-      <div class="boxl-content text shrinky">%(text_seller)s <span class="smalltext">(%(text_email)s)</span></div>
-      <div class="boxl-content text shrinky">%(text_description)s</div>
-      <div class="boxl-content text shrinky">%(div_paid)s%(text_paid)s%(text_paynow)s</div>
-      <div class="boxl-spacer"></div>
-    </div>
-  </div>
-</div>"""
-
     if self.is_mobile:
-      pagetext = __MOBILE
       if text_paynow:
         text_paynow = ' - ' + text_paynow
+      path_file = 'templates/mobile_div.html'
     else:
-      pagetext = __DESKTOP
+      path_file = 'templates/desktop_div.html'
 
-    self.pagebuffer.append(pagetext % {
+    path = os.path.join(os.path.dirname(__file__), path_file)
+
+    template_values = {
       'opendiv_linestyle': opendiv_linestyle,
       'text_currency': text_currency,
       'text_amount': text_amount,
@@ -275,7 +167,9 @@ class NewPage():
       'text_seller': text_seller,
       'text_email': text_email,
       'text_paynow': text_paynow,
-    })
+    }
+
+    self.pagebuffer.append(template.render(path, template_values))
 
 
   def AppendCompact(self, message):
