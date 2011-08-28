@@ -26,8 +26,9 @@ class NewPage():
     self.title = title
     self.logged_in_text = 'Not logged in.'
     if user:
-      if user.google_account.email():
-        self.logged_in_text = user.google_account.email()
+      if user.google_account:
+        if user.google_account.email():
+          self.logged_in_text = user.google_account.email()
 
     # clear the buffer
     self.pagebuffer = []

@@ -177,7 +177,20 @@ class AppPage_Default(webapp.RequestHandler):
     user_manager = spmuser.UserManager()
     spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
 
-    ### render page ###
+    ##### preprocessing before rendering page #####
+
+    # show all records explicitly sent to this user
+
+    # query as an iterable instead of fetch so we get all the records
+    # TODO: implement paging    
+    records = db.GqlQuery(
+      'SELECT * FROM PurchaseRecord '
+      'WHERE SPMUser_sentto = :1 '
+      'ORDER BY date_latest DESC ',
+      spm_loggedin_user
+    )
+
+    ##### render page #####
 
     page = spmbuilder.NewPage(
       title = self._TITLE,
@@ -188,11 +201,28 @@ class AppPage_Default(webapp.RequestHandler):
 
     if spm_loggedin_user:
       if spm_loggedin_user.checkout_verified:
-        page.AppendSpaced('Logged in, so go to <a href="/everything">everything</a> or <a href="/now">send now</a>.')
+        page.AppendSpaced('Your sopay.me requests are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
       else:
-        page.AppendSpaced('Logged in, but you don\'t have a checkout seller account set up. Email Zach for access.')
+        page.AppendSpaced('Your sopay.me requests are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
     else:
       page.AppendSpaced('Not logged in.  You should <a href="/signin">sign in</a>.')
+
+    # display your outstanding purchases, don't bother for things not sent with
+    # sopay me (no need to do advanced keying or grouping at the moment
+
+    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
+
+    for record in records:
+      leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
+      if leader_line:
+        # use split url so we get the nice three-digit formatting for #
+        split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
+        leader_line = _RECORD_STRING % ({
+          'forpart': split_url[2], 
+          'serialpart': split_url[3],
+        })
+        page.AppendCompact(leader_line)
+        page.AppendHoverRecord(record = record, linkify = True)
 
     self.response.out.write(page.Render())
 

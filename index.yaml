@@ -1,7 +1,15 @@
 indexes:
 
+# sorting on everything screen
 - kind: PurchaseRecord
   properties:
   - name: SPMUser_seller
+  - name: date_latest
+    direction: desc
+
+# sorting on main screen
+- kind: PurchaseRecord
+  properties:
+  - name: SPMUser_sentto
   - name: date_latest
     direction: desc
