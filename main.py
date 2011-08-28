@@ -226,9 +226,9 @@ class AppPage_Default(webapp.RequestHandler):
         })
         page.AppendCompact(leader_line)
         if spm_loggedin_user:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False, show_seller_instead = True)
         else:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True, show_seller_instead = True)
 
     self.response.out.write(page.Render())
 

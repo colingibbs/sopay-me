@@ -52,31 +52,37 @@ class NewPage():
     return template.render(path, template_values)
 
   
-  def AppendHoverRecord(self, record, linkify, obfuscate_email):
+  def AppendHoverRecord(self, record, linkify, obfuscate_email, show_seller_instead=False):
 
-    # user
-  
-    if record.SPMUser_sentto:
+    text_email = ''
+    text_seller = ''
+    url_seller_picture = ''
+
+    if record.SPMUser_seller and show_seller_instead:
+      text_email = str(record.SPMUser_seller.email)
+      text_seller = record.SPMUser_seller.name
+      if record.SPMUser_seller.facebook_id:
+        url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_seller.facebook_id + '/picture?square'
+    elif record.SPMUser_sentto:
       if record.sent_to_email:
         text_email = record.sent_to_email
       else:
         text_email = str(record.SPMUser_sentto.email)
-      if not text_email:
-        text_email = 'ERROR: No email'
-      if obfuscate_email:
-        text_email = self.__ObfuscateEmail(text_email)
       text_seller = record.SPMUser_sentto.name
-      if not text_seller:
-        text_seller = text_email
       if record.SPMUser_sentto.facebook_id:
         url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
-      else:
-        url_seller_picture = ''
     else:
       logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
-      text_seller = 'ERROR: No user found'
-      text_email = 'ERROR: No user found'
       url_seller_picture = ''
+
+    if not text_email:
+      text_email = 'ERROR: No email'
+    elif obfuscate_email:
+      text_email = self.__ObfuscateEmail(text_email)
+    if not text_seller:
+      text_seller = text_email
+      if not text_seller:
+        text_seller = 'ERROR: No user'
 
     # record
 
