@@ -52,7 +52,7 @@ class NewPage():
     return template.render(path, template_values)
 
   
-  def AppendHoverRecord(self, record, linkify):
+  def AppendHoverRecord(self, record, linkify, obfuscate_email):
 
     # user
   
@@ -63,6 +63,8 @@ class NewPage():
         text_email = str(record.SPMUser_sentto.email)
       if not text_email:
         text_email = 'ERROR: No email'
+      if obfuscate_email:
+        text_email = self.__ObfuscateEmail(text_email)
       text_seller = record.SPMUser_sentto.name
       if not text_seller:
         text_seller = text_email
@@ -187,5 +189,20 @@ class NewPage():
     _PAGE_INLINE = '<div class="simple">%(message)s</div>'
     self.pagebuffer.append(_PAGE_INLINE % ({'message': message}))
     
-    
-    
+
+  def __ObfuscateEmail(self, email):
+    """Obfuscates emails."""
+
+    if not email:
+      return None
+
+    parts = email.split('@')
+    if parts[0]:
+      if len(parts[0]) > 3:
+        parts[0] = parts[0][0:3] + '***'
+    if parts[1]:
+      if len(parts[1]) > 3:
+        parts[1] = parts[1][0:3] + '***'
+  
+    return parts[0] + '@' + parts[1]
+  

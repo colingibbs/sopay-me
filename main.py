@@ -183,12 +183,15 @@ class AppPage_Default(webapp.RequestHandler):
 
     # query as an iterable instead of fetch so we get all the records
     # TODO: implement paging    
-    records = db.GqlQuery(
-      'SELECT * FROM PurchaseRecord '
-      'WHERE SPMUser_sentto = :1 '
-      'ORDER BY date_latest DESC ',
-      spm_loggedin_user
-    )
+    if spm_loggedin_user:
+      records = db.GqlQuery(
+        'SELECT * FROM PurchaseRecord '
+        'WHERE SPMUser_sentto = :1 '
+        'ORDER BY date_latest DESC ',
+        spm_loggedin_user
+      )
+    else:
+      records = []
 
     ##### render page #####
 
@@ -222,7 +225,10 @@ class AppPage_Default(webapp.RequestHandler):
           'serialpart': split_url[3],
         })
         page.AppendCompact(leader_line)
-        page.AppendHoverRecord(record = record, linkify = True)
+        if spm_loggedin_user:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
+        else:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
 
     self.response.out.write(page.Render())
 
@@ -534,7 +540,10 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     for date, url_key in list_to_sort:
       page.AppendCompact(url_key)
       for record in sort_buckets[url_key]:
-        page.AppendHoverRecord(record = record, linkify = True)
+        if spm_loggedin_user:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
+        else:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
 
     self.response.out.write(page.Render())
 
@@ -595,7 +604,10 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 
     for record in records:
       records_shown = True
-      page.AppendHoverRecord(record = record, linkify = False)
+      if spm_loggedin_user:
+        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = False)
+      else:
+        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = True)
 
     # if there aren't any records, there's nothing to show
     if not records_shown:
