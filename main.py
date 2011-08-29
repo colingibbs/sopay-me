@@ -233,6 +233,165 @@ class AppPage_Default(webapp.RequestHandler):
     self.response.out.write(page.Render())
 
 
+class AppPage_PaymentHistory(webapp.RequestHandler):
+  """Checkout account required."""
+
+  def __init__(self):
+    self._TITLE = SPM + ' everything'
+
+
+  def get(self):
+
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    if not spm_loggedin_user.checkout_verified:
+      self.redirect('/')
+      return
+
+    ##### preprocessing before rendering page #####
+
+    # query as an iterable instead of fetch so we get all the records
+    # TODO: implement paging
+    records = db.GqlQuery(
+      'SELECT * FROM PurchaseRecord '
+      'WHERE SPMUser_seller = :1 '
+      'ORDER BY date_latest DESC ',
+      spm_loggedin_user
+    )
+
+    _OTHER_STRING = 'For other things (invoices not sent with sopay.me)'
+    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
+
+    # group the records into a dict of lists keyed off of url. to be considered
+    # in a grouping, the record must have a c14n url and a valid date_sent set,
+    # otherwise stick it into the 'other things' category cause it wasn't sent
+    # using sopay.me
+    sort_buckets = {}
+    time_sort = []
+    for record in records:
+      key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
+      if not key_url:
+        key_url = _OTHER_STRING
+      else:
+        # use split url so we get the nice three-digit formatting for #
+        split_url = key_url.split('/') # (''/'for'/'name'/'serial')
+        key_url = _RECORD_STRING % ({
+          'forpart': split_url[2], 
+          'serialpart': split_url[3],
+        })
+      try:
+        sort_buckets[key_url]
+      except KeyError:
+        sort_buckets[key_url] = []
+      sort_buckets[key_url].append(record)
+
+
+    # sort by the most recent update in each of the buckets, but
+    # always sort 'other' last (these are the things not sent with spm)
+    list_to_sort = []
+    for url in sort_buckets.keys():
+      date_max = datetime(1985,9,17)
+      if not url == _OTHER_STRING:
+        for record in sort_buckets[url]:
+          if record.date_latest > date_max:
+            date_max = record.date_latest
+      list_to_sort.append((date_max, url))
+    list_to_sort.sort(reverse = True)
+
+    ##### start rendering page #####
+
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      user = spm_loggedin_user,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
+
+    page.AppendSpaced('Send a new invoice <a href="/now"> now</a>.')
+
+    for date, url_key in list_to_sort:
+      page.AppendCompact(url_key)
+      for record in sort_buckets[url_key]:
+        if spm_loggedin_user:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
+        else:
+          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
+
+    self.response.out.write(page.Render())
+
+
+class AppPage_StaticPaylink(webapp.RequestHandler):
+  """Accessible without login."""
+
+  def get(self):
+    """TODO"""
+
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    # TODO: acl'ed payments
+    # if not spm_loggedin_user.checkout_verified:
+    #  self.redirect('/')
+    #  return
+
+    ##### preprocessing before rendering page #####
+
+    # validate url
+    # forward : if self.request.query_string:
+    parsed_url = ParseSPMURL(self.request.path, relpath=True)
+    if not parsed_url:
+      self.redirect("/")
+      return
+
+    # if digit is too short redirect to 3char+
+    c14n_url = BuildSPMURL(parsed_url['name'], parsed_url['serial'], relpath=True)
+    if not c14n_url == self.request.path:
+      self.redirect(c14n_url, permanent=True)
+      return
+    self._TITLE = SPM + ' for ' + parsed_url['name']
+
+    # query this as an iterable instead of fetch so we get them all
+    records = db.GqlQuery(
+      'SELECT * FROM PurchaseRecord '
+      'WHERE spm_name = :1 AND spm_serial = :2',
+      parsed_url['name'], parsed_url['serial']
+    )
+
+    ##### start rendering page #####
+
+    records_shown = False
+
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      user = spm_loggedin_user,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+    )
+
+    page.AppendSpaced(
+      'Note that payment updates from Google Checkout may take up to an hour to appear.'
+    )
+
+    for record in records:
+      records_shown = True
+      if spm_loggedin_user:
+        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = False)
+      else:
+        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = True)
+
+    # if there aren't any records, there's nothing to show
+    if not records_shown:
+      self.redirect('/')
+      return
+    else:
+      self.response.out.write(page.Render())
+
+
 class AppPage_Send(webapp.RequestHandler):
   """Checkout account required."""
 
@@ -455,166 +614,6 @@ class AppPage_Send(webapp.RequestHandler):
     # note that there's a datastore delay so we can't redirect immediately to
     # the pay page, so instead redirect to the seller view page
     self.redirect('/everything')
-    
-
-
-class AppPage_PaymentHistory(webapp.RequestHandler):
-  """Checkout account required."""
-
-  def __init__(self):
-    self._TITLE = SPM + ' everything'
-
-
-  def get(self):
-
-    ##### identity #####
-
-    user_manager = spmuser.UserManager()
-    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
-
-    if not spm_loggedin_user.checkout_verified:
-      self.redirect('/')
-      return
-
-    ##### preprocessing before rendering page #####
-
-    # query as an iterable instead of fetch so we get all the records
-    # TODO: implement paging
-    records = db.GqlQuery(
-      'SELECT * FROM PurchaseRecord '
-      'WHERE SPMUser_seller = :1 '
-      'ORDER BY date_latest DESC ',
-      spm_loggedin_user
-    )
-
-    _OTHER_STRING = 'For other things (invoices not sent with sopay.me)'
-    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
-
-    # group the records into a dict of lists keyed off of url. to be considered
-    # in a grouping, the record must have a c14n url and a valid date_sent set,
-    # otherwise stick it into the 'other things' category cause it wasn't sent
-    # using sopay.me
-    sort_buckets = {}
-    time_sort = []
-    for record in records:
-      key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
-      if not key_url:
-        key_url = _OTHER_STRING
-      else:
-        # use split url so we get the nice three-digit formatting for #
-        split_url = key_url.split('/') # (''/'for'/'name'/'serial')
-        key_url = _RECORD_STRING % ({
-          'forpart': split_url[2], 
-          'serialpart': split_url[3],
-        })
-      try:
-        sort_buckets[key_url]
-      except KeyError:
-        sort_buckets[key_url] = []
-      sort_buckets[key_url].append(record)
-
-
-    # sort by the most recent update in each of the buckets, but
-    # always sort 'other' last (these are the things not sent with spm)
-    list_to_sort = []
-    for url in sort_buckets.keys():
-      date_max = datetime(1985,9,17)
-      if not url == _OTHER_STRING:
-        for record in sort_buckets[url]:
-          if record.date_latest > date_max:
-            date_max = record.date_latest
-      list_to_sort.append((date_max, url))
-    list_to_sort.sort(reverse = True)
-
-    ##### start rendering page #####
-
-    page = spmbuilder.NewPage(
-      title = self._TITLE,
-      user = spm_loggedin_user,
-      useragent = self.request.headers.get('user_agent'),
-      uideb = self.request.get('uideb'),
-    )
-
-    page.AppendSpaced('Send a new invoice <a href="/now"> now</a>.')
-
-    for date, url_key in list_to_sort:
-      page.AppendCompact(url_key)
-      for record in sort_buckets[url_key]:
-        if spm_loggedin_user:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
-        else:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
-
-    self.response.out.write(page.Render())
-
-
-class AppPage_StaticPaylink(webapp.RequestHandler):
-  """Accessible without login."""
-
-  def get(self):
-    """TODO"""
-
-    ##### identity #####
-
-    user_manager = spmuser.UserManager()
-    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
-
-    # TODO: acl'ed payments
-    # if not spm_loggedin_user.checkout_verified:
-    #  self.redirect('/')
-    #  return
-
-    ##### preprocessing before rendering page #####
-
-    # validate url
-    # forward : if self.request.query_string:
-    parsed_url = ParseSPMURL(self.request.path, relpath=True)
-    if not parsed_url:
-      self.redirect("/")
-      return
-
-    # if digit is too short redirect to 3char+
-    c14n_url = BuildSPMURL(parsed_url['name'], parsed_url['serial'], relpath=True)
-    if not c14n_url == self.request.path:
-      self.redirect(c14n_url, permanent=True)
-      return
-    self._TITLE = SPM + ' for ' + parsed_url['name']
-
-    # query this as an iterable instead of fetch so we get them all
-    records = db.GqlQuery(
-      'SELECT * FROM PurchaseRecord '
-      'WHERE spm_name = :1 AND spm_serial = :2',
-      parsed_url['name'], parsed_url['serial']
-    )
-
-    ##### start rendering page #####
-
-    records_shown = False
-
-    page = spmbuilder.NewPage(
-      title = self._TITLE,
-      user = spm_loggedin_user,
-      useragent = self.request.headers.get('user_agent'),
-      uideb = self.request.get('uideb'),
-    )
-
-    page.AppendSpaced(
-      'Note that payment updates from Google Checkout may take up to an hour to appear.'
-    )
-
-    for record in records:
-      records_shown = True
-      if spm_loggedin_user:
-        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = False)
-      else:
-        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = True)
-
-    # if there aren't any records, there's nothing to show
-    if not records_shown:
-      self.redirect('/')
-      return
-    else:
-      self.response.out.write(page.Render())
 
 
 ################################################################################
