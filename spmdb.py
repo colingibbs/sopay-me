@@ -87,6 +87,39 @@ class CountStore(db.Model):
   url_count = db.IntegerProperty(required = True)
 
 
+class DailyLogs(db.Model):
+
+  date_key = db.DateTimeProperty(required = True)
+  date_actually_run_on = db.DateTimeProperty() # fyi field
+
+  num_spm = db.IntegerProperty()
+  num_spm_paid = db.IntegerProperty()
+  num_spm_not_paid = db.IntegerProperty()
+  paid_currency_dollars = db.FloatProperty()
+  paid_currency_other = db.FloatProperty()
+  not_paid_currency_dollars = db.FloatProperty()
+  not_paid_currency_other = db.FloatProperty()
+
+  num_not_spm = db.IntegerProperty()
+
+  today_records_active = db.IntegerProperty()
+  today_new_num_spm_sent = db.IntegerProperty()
+  today_new_currency_dollars_sent = db.FloatProperty()
+  today_new_num_spm_paid = db.IntegerProperty()
+  today_new_currency_dollars_paid = db.FloatProperty()
+
+  namespace_names = db.IntegerProperty()
+  namespace_name_serials = db.IntegerProperty()
+
+  users = db.IntegerProperty()
+  users_with_checkout = db.IntegerProperty()
+  users_without_selling_ability  = db.IntegerProperty()
+
+  users_loggedin_1d = db.IntegerProperty()
+  users_loggedin_7d = db.IntegerProperty()
+  users_loggedin_30d = db.IntegerProperty()
+
+
 def strEmpty(string):
   if string:
     return str(string)

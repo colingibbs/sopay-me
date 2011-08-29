@@ -1,4 +1,9 @@
 cron:
+
 - description: cron job to auto-sync all user's accounts
   url: /task/synccron
   schedule: every 10 minutes
+
+- description: daily logs cron job
+  url: /task/logscron
+  schedule: every day 02:00 # UTC
