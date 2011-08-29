@@ -565,7 +565,7 @@ class AppPage_Send(webapp.RequestHandler):
       checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
       checkout_payurl = checkout.GetPaymentUrl(
         spm_full_id = spmid,
-        description = new_pr.description,
+        description = new_pr.spm_name + ' (' + new_pr.description + ')',
         amount = new_pr.amount,
         currency = new_pr.currency,
       )
