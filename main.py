@@ -214,7 +214,7 @@ class AppPage_Default(webapp.RequestHandler):
       if spm_loggedin_user.checkout_verified:
         page.AppendLine('Your sopay.me\'s are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
       else:
-        page.AppendLine('Your sopay.me\'s are listed below. Want to send them? Well, you can\'t right now, because you don\'t have a checkout seller account set up. Email Zach if you have a checkout seller\'s account and want that set up.')
+        page.AppendLine('Your sopay.me\'s are listed below. Want to send new sopay.me\'s? Well, you can\'t right now, because you don\'t have a Google Checkout seller account set up. Email Zach if you have one want to participate in the beta.')
 
       # display your outstanding purchases, don't bother for things not sent with
       # sopay me (no need to do advanced keying or grouping at the moment
@@ -371,7 +371,11 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendLine('Note: Payment updates from Checkout may take up to an hour to appear. Sign in to see full names and emails.')
+    top_text = 'Note: Payment updates from Checkout may take up to an hour to appear.'
+    if not spm_loggedin_user:
+      top_text += 'Sign in to see full names and emails.'
+
+    page.AppendLine(top_text)
     page.AppendLineShaded('')
 
     is_first = True
