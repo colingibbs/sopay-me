@@ -373,7 +373,7 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
 
     top_text = 'Note: Payment updates from Checkout may take up to an hour to appear.'
     if not spm_loggedin_user:
-      top_text += 'Sign in to see full names and emails.'
+      top_text += ' Sign in to see full names and emails.'
 
     page.AppendLine(top_text)
     page.AppendLineShaded('')
