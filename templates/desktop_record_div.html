@@ -1,0 +1,31 @@
+  {{ opendiv_linestyle }}
+    <div class="boxl-hparent">
+      <div class="boxl-vparent boxl-content col-face">
+        <div class="boxl-spacer"></div>
+        <div class="boxl-content profile40" style="background-image:url('{{ url_picture }}');"></div>
+        <div class="boxl-spacer"></div>
+      </div>
+      <div class="boxl-vparent boxl-content col-annotation">
+        <div class="boxl-spacer"></div>
+        <div class="boxl-content text shrinky">{{ text_name }}</div>
+        <div class="boxl-content smalltext shrinky">{{ text_email }}</div>
+        <div class="boxl-spacer"></div>
+      </div>
+      <div class="boxl-vparent boxl-content col-amount">
+        <div class="boxl-spacer"></div>
+        <div class="boxl-content"><span class="amount"><span class="currency">{{ text_currency }}&nbsp;</span>{{ text_amount }}</span></div>
+        <div class="boxl-spacer"></div>
+      </div>
+      <div class="boxl-vparent boxl-content col-desc">
+        <div class="boxl-spacer"></div>
+        <div class="boxl-content text">{{ description_line1 }}</div>
+        <div class="boxl-content text shrinky">{{ description_line2 }}</div>
+        <div class="boxl-spacer"></div>
+      </div>
+      <div class="boxl-vparent boxl-content col-paidbutton">
+        <div class="boxl-spacer"></div>
+        <div class="boxl-content text">{{ text_paynow }}</div>
+        <div class="boxl-spacer"></div>
+      </div>
+    </div>
+  </div>

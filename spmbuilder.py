@@ -18,10 +18,24 @@ class NewPage():
       self.is_mobile = True
     else:
       self.is_mobile = False
+
+    # set email obfuscation 
+    if user:
+      self.obfuscate_email = False
+    else:
+      self.obfuscate_email = True
     
-    # override mobile setting if uideb=m present
+    ### uideb controls ####
+    # m: force mobile view
+    # o: force email obfuscation
+
     if 'm' in uideb:
       self.is_mobile = True
+
+    if 'o' in uideb:
+      self.obfuscate_email = True
+
+    ### set variables ###
     
     self.title = title
     self.logged_in_text = 'Not logged in.'
@@ -30,7 +44,7 @@ class NewPage():
         if user.google_account.email():
           self.logged_in_text = user.google_account.email()
 
-    # clear the buffer
+    # initialize the buffer
     self.pagebuffer = []
 
 
@@ -51,38 +65,109 @@ class NewPage():
 
     return template.render(path, template_values)
 
-  
-  def AppendHoverRecord(self, record, linkify, obfuscate_email, show_seller_instead=False):
+
+  def AppendIdentity(self, record, show_seller_instead=False):
 
     text_email = ''
-    text_seller = ''
-    url_seller_picture = ''
+    text_name = ''
+    url_picture = ''
 
     if record.SPMUser_seller and show_seller_instead:
       text_email = str(record.SPMUser_seller.email)
-      text_seller = record.SPMUser_seller.name
+      text_name = record.SPMUser_seller.name
       if record.SPMUser_seller.facebook_id:
-        url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_seller.facebook_id + '/picture?square'
+        url_picture = 'http://graph.facebook.com/' + record.SPMUser_seller.facebook_id + '/picture?square'
     elif record.SPMUser_sentto:
       if record.sent_to_email:
         text_email = record.sent_to_email
       else:
         text_email = str(record.SPMUser_sentto.email)
-      text_seller = record.SPMUser_sentto.name
+      text_name = record.SPMUser_sentto.name
       if record.SPMUser_sentto.facebook_id:
-        url_seller_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
+        url_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
     else:
       logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
-      url_seller_picture = ''
+      url_picture = ''
 
     if not text_email:
       text_email = 'ERROR: No email'
-    elif obfuscate_email:
+    elif self.obfuscate_email:
       text_email = self.__ObfuscateEmail(text_email)
-    if not text_seller:
-      text_seller = text_email
-      if not text_seller:
-        text_seller = 'ERROR: No user'
+    if not text_name:
+      text_name = text_email
+      if not text_name:
+        text_name = 'ERROR: No user'
+
+    # record
+
+    text_description = 'Description unknown'
+    if record.description:
+      text_description = record.description
+
+    _JUST_MONTH = '%B'
+    _JUST_DAY = '%d'
+    _PRETTY_TIME = '%B %d'
+    _YMD_TIME = '%Y-%m-%d'
+
+    date_sent = ''
+    if record.date_sent:
+      date_sent = 'Sent on ' + record.date_sent.strftime(_PRETTY_TIME)
+
+    ### actually start rendering ###
+
+    if self.is_mobile:
+      path_file = 'templates/mobile_record_div.html'
+    else:
+      path_file = 'templates/desktop_record_div.html'
+
+    path = os.path.join(os.path.dirname(__file__), path_file)
+
+    template_values = {
+      'opendiv_linestyle': '<div class="line-nohover">',
+      'text_currency': '',
+      'text_amount': '',
+      'description_line1': text_description,
+      'description_line2': date_sent,
+      'url_picture': url_picture,
+      'text_name': text_name,
+      'text_email': text_email,
+      'text_paynow': '',
+    }
+
+    self.pagebuffer.append(template.render(path, template_values))
+
+
+  def AppendHoverRecord(self, record, linkify, show_seller_instead=False):
+
+    text_email = ''
+    text_name = ''
+    url_picture = ''
+
+    if record.SPMUser_seller and show_seller_instead:
+      text_email = str(record.SPMUser_seller.email)
+      text_name = record.SPMUser_seller.name
+      if record.SPMUser_seller.facebook_id:
+        url_picture = 'http://graph.facebook.com/' + record.SPMUser_seller.facebook_id + '/picture?square'
+    elif record.SPMUser_sentto:
+      if record.sent_to_email:
+        text_email = record.sent_to_email
+      else:
+        text_email = str(record.SPMUser_sentto.email)
+      text_name = record.SPMUser_sentto.name
+      if record.SPMUser_sentto.facebook_id:
+        url_picture = 'http://graph.facebook.com/' + record.SPMUser_sentto.facebook_id + '/picture?square'
+    else:
+      logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
+      url_picture = ''
+
+    if not text_email:
+      text_email = 'ERROR: No email'
+    elif self.obfuscate_email:
+      text_email = self.__ObfuscateEmail(text_email)
+    if not text_name:
+      text_name = text_email
+      if not text_name:
+        text_name = 'ERROR: No user'
 
     # record
 
@@ -107,7 +192,7 @@ class NewPage():
     if not text_currency:
       text_currency = 'ERROR'
     elif text_currency == 'USD':
-      text_currency = '$'
+      text_currency = '$ '
 
     text_paynow = ''
     if record.checkout_payurl and not record.date_paid:
@@ -124,44 +209,38 @@ class NewPage():
 
     # paid information
 
+    text_paid_by = ''
     if record.date_cancelled:
-      text_paid = 'Cancelled'
-      div_paid = '<div class="icon maybe"></div>'
+      text_paid = '<div class="icon maybe"></div>Cancelled'
     elif record.date_paid:
       text_paid = (
-        'Paid on ' + record.date_paid.strftime(_JUST_MONTH) + ' ' +
-         str(long(record.date_paid.strftime(_JUST_DAY)))
+        '<div class="icon yes"></div>Paid on ' +
+        record.date_paid.strftime(_JUST_MONTH) + ' ' +
+        str(long(record.date_paid.strftime(_JUST_DAY)))
       )
-      div_paid = '<div class="icon yes"></div>'
       if record.SPMUser_buyer:
         if record.SPMUser_buyer.name:
-          text_paid += ' by ' + record.SPMUser_buyer.name
+          text_paid_by = 'by ' + record.SPMUser_buyer.name
         elif record.SPMUser_buyer.email:
-          text_paid += ' by ' + record.SPMUser_buyer.email
+          text_paid_by = 'by ' + record.SPMUser_buyer.email
     else:
-      # created with sopay.me and not paid
-      if record.spm_name:
-        text_paid = 'Not paid'
-        div_paid = '<div class="icon no"></div>'
+      text_paid = '<div class="icon no"></div>Not paid'
       # not created with sopay.me and not paid (cancelled out-of-band)
-      else:
-        text_paid = 'Not paid, not from sopay.me'
-        div_paid = '<div class="icon maybe"></div>'
+      if not record.spm_name:
+        text_paid_by = '(not sent with sopay.me)'
 
     # no hover on mobile
     if c14n_url and linkify:
-      opendiv_linestyle = '<div class="linehover" onclick="location.href=\'' + c14n_url + '\'">'
+      opendiv_linestyle = '<div class="line-hover" onclick="location.href=\'' + c14n_url + '\'">'
     else:
-      opendiv_linestyle = '<div class="linenohover">' 
+      opendiv_linestyle = '<div class="line-nohover">' 
 
     ### actually start rendering ###
 
     if self.is_mobile:
-      if text_paynow:
-        text_paynow = ' - ' + text_paynow
-      path_file = 'templates/mobile_div.html'
+      path_file = 'templates/mobile_record_div.html'
     else:
-      path_file = 'templates/desktop_div.html'
+      path_file = 'templates/desktop_record_div.html'
 
     path = os.path.join(os.path.dirname(__file__), path_file)
 
@@ -169,11 +248,10 @@ class NewPage():
       'opendiv_linestyle': opendiv_linestyle,
       'text_currency': text_currency,
       'text_amount': text_amount,
-      'text_description': text_description,
-      'div_paid': div_paid,
-      'text_paid': text_paid,
-      'url_seller_picture': url_seller_picture,
-      'text_seller': text_seller,
+      'description_line1': text_paid,
+      'description_line2': text_paid_by,
+      'url_picture': url_picture,
+      'text_name': text_name,
       'text_email': text_email,
       'text_paynow': text_paynow,
     }
@@ -181,19 +259,14 @@ class NewPage():
     self.pagebuffer.append(template.render(path, template_values))
 
 
-  def AppendCompact(self, message):
-    _PAGE_INLINE_COMPACT = '<div class="compact">%(message)s</div>'
-    self.pagebuffer.append(_PAGE_INLINE_COMPACT % ({'message': message}))
-
-
-  def AppendSpaced(self, message):
-    _PAGE_INLINE = '<div class="fullline">%(message)s</div>'
+  def AppendLine(self, message):
+    _PAGE_INLINE = '<div class="line">%(message)s</div>'
     self.pagebuffer.append(_PAGE_INLINE % ({'message': message}))
 
 
-  def AppendText(self, message):
-    _PAGE_INLINE = '<div class="simple">%(message)s</div>'
-    self.pagebuffer.append(_PAGE_INLINE % ({'message': message}))
+  def AppendLineShaded(self, message):
+    _PAGE_INLINE_SHADED = '<div class="line-shaded">%(message)s</div>'
+    self.pagebuffer.append(_PAGE_INLINE_SHADED % ({'message': message}))
     
 
   def __ObfuscateEmail(self, email):

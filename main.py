@@ -204,11 +204,11 @@ class AppPage_Default(webapp.RequestHandler):
 
     if spm_loggedin_user:
       if spm_loggedin_user.checkout_verified:
-        page.AppendSpaced('Your sopay.me requests are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
+        page.AppendLine('Your sopay.me requests are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
       else:
-        page.AppendSpaced('Your sopay.me requests are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
+        page.AppendLine('Your sopay.me requests are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
     else:
-      page.AppendSpaced('Not logged in.  You should <a href="/signin">sign in</a>.')
+      page.AppendLine('Not logged in.  You should <a href="/signin">sign in</a>.')
 
     # display your outstanding purchases, don't bother for things not sent with
     # sopay me (no need to do advanced keying or grouping at the moment
@@ -224,11 +224,11 @@ class AppPage_Default(webapp.RequestHandler):
           'forpart': split_url[2], 
           'serialpart': split_url[3],
         })
-        page.AppendCompact(leader_line)
+        page.AppendLineShaded(leader_line)
         if spm_loggedin_user:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False, show_seller_instead = True)
+          page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
         else:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True, show_seller_instead = True)
+          page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
 
     self.response.out.write(page.Render())
 
@@ -310,15 +310,16 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendSpaced('Send a new invoice <a href="/now"> now</a>.')
+    page.AppendLine('Send a new invoice <a href="/now"> now</a>.')
 
     for date, url_key in list_to_sort:
-      page.AppendCompact(url_key)
+      page.AppendLineShaded('')
+      page.AppendLine(url_key)
       for record in sort_buckets[url_key]:
         if spm_loggedin_user:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = False)
+          page.AppendHoverRecord(record = record, linkify = True)
         else:
-          page.AppendHoverRecord(record = record, linkify = True, obfuscate_email = True)
+          page.AppendHoverRecord(record = record, linkify = True)
 
     self.response.out.write(page.Render())
 
@@ -342,13 +343,12 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
     ##### preprocessing before rendering page #####
 
     # validate url
-    # forward : if self.request.query_string:
     parsed_url = ParseSPMURL(self.request.path, relpath=True)
     if not parsed_url:
       self.redirect("/")
       return
 
-    # if digit is too short redirect to 3char+
+    # if digit is too short rewrite and redirect to 3char+
     c14n_url = BuildSPMURL(parsed_url['name'], parsed_url['serial'], relpath=True)
     if not c14n_url == self.request.path:
       self.redirect(c14n_url, permanent=True)
@@ -373,16 +373,20 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendSpaced(
-      'Note that payment updates from Google Checkout may take up to an hour to appear.'
-    )
+    page.AppendLine('Note: Payment updates from Checkout may take up to an hour to appear.')
+    page.AppendLineShaded('')
 
+    is_first = True
     for record in records:
+      if is_first:
+        page.AppendIdentity(record = record, show_seller_instead = True)
+        page.AppendLineShaded('')
+        is_first = False
       records_shown = True
       if spm_loggedin_user:
-        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = False)
+        page.AppendHoverRecord(record = record, linkify = False)
       else:
-        page.AppendHoverRecord(record = record, linkify = False, obfuscate_email = True)
+        page.AppendHoverRecord(record = record, linkify = False)
 
     # if there aren't any records, there's nothing to show
     if not records_shown:
@@ -467,9 +471,9 @@ class AppPage_Send(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendSpaced('There\'s like, uh, no input validation on this page. You can and will break it if you\'re dumb.')
+    page.AppendLine('There\'s like, uh, no input validation on this page. You can and will break it if you\'re dumb.')
 
-    page.AppendText(_PAGE_CONTENT % {'posturl': self.request.path})
+    page.AppendLine(_PAGE_CONTENT % {'posturl': self.request.path})
     self.response.out.write(page.Render())
 
 

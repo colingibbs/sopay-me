@@ -20,20 +20,20 @@ input {
 
 /* Highlighted lists page: ui containers */
 
-.fullline {
+.line {
   margin: 0;
   padding: 8px 8px;
   border-top: 1px solid #E5E5E5;
 }
 
-.compact {
+.line-shaded {
   margin: 0;
   padding: 4px 8px;
   background: #F5F5F5;
   border-top: 1px solid #E5E5E5;
 }
 
-.simple, .linehover, .linenohover {
+.line-hover, .line-nohover {
   margin: 0;
   padding: 4px 8px;
   border-top: 1px solid #E5E5E5;

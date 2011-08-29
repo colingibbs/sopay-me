@@ -19,12 +19,12 @@ body {
 
 /* Highlighted lists page: ui containers */
 
-.fullline {
+.line {
   margin: 0;
-  padding: 21px 30px;
+  padding: 8px 30px;
 }
 
-.compact {
+.line-shaded {
   margin: 0;
   padding: 4px 30px;
   background: #F5F5F5;
@@ -32,33 +32,35 @@ body {
   border-top: 1px solid #E5E5E5;
 }
 
-.simple, .linehover, .linenohover {
+.line-hover, .line-nohover {
   margin: 0;
   padding: 4px 30px;
+  min-height: 46px;
 }
 
-.linehover:hover {
+.line-hover:hover {
   background-color: #F9EDBE;
 }
 
 /* Desktop sizing */
 
 .col-amount, .col-face, .col-annotation, .col-status {
-  height: 50px;
-}
-.col-amount { 
-  width: 110px;
-}
-.col-desc {
-  width: 300px;
-  padding-right: 10px;
+  height: 46px;
 }
 .col-face {
   width: 40px;
+  max-width: 40px; /* for id block */
 }
 .col-annotation {
-  width: 200px;
+  width: 220px;
   padding-left: 10px;
+}
+.col-amount { 
+  width: 130px;
+}
+.col-desc {
+  width: 260px;
+  padding-right: 10px;
 }
 .col-paidbutton {
   width: 60px;
