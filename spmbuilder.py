@@ -196,7 +196,7 @@ class NewPage():
 
     text_paynow = ''
     if record.checkout_payurl and not record.date_paid:
-      text_paynow = '<a href="' + record.checkout_payurl + '"><strong>Pay now</strong></a>'
+      text_paynow = '<a href="' + record.checkout_payurl + '">Pay now</a>'
 
     #text_transaction = ''
     #if record.spm_transaction:

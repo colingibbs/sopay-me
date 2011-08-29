@@ -10,18 +10,18 @@ body {
 body strong { color: #222222 }
 a:link { color: #1155CC }
 a:visited { color: #6611CC }
-a:active { color: #D14836 }
+a:active { color: #50C25B }
 
 #title {
   margin: 0;
   background-color: #F5F5F5;
-  color: #D14836;
+  color: #222222;
 }
 .titletext {
   font-size: 20px;
 }
 .titlesecondary {
-  color: #D14836;
+  color: #222222;
   font-size: 11px;
 }
 
@@ -117,7 +117,7 @@ input {
   text-decoration: none;
 }
 .text a:hover, .text a:hover strong {
-  color: #D14836;
+  color: #50C25B;
   text-decoration: none;
 }
 
@@ -125,6 +125,17 @@ input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* special paynow behavior */
+
+.paynow a:link, .paynow a:visited {
+  color: #D14836;
+  font-weight: bold;
+}
+.paynow a:hover, .paynow a:active {
+  color: #50C25B;
+  font-weight: bold;
 }
 
 /* icon */
