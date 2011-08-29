@@ -725,11 +725,12 @@ application = webapp.WSGIApplication([
   # Background task queues
   ('/task/checkout', TaskPage_SyncCheckout),
   ('/task/synccron', TaskPage_SyncCron),
+  # API
+  ('/rpc', AppPage_RPC),  
   # User-facing
   ('/debug.*', AppPage_Debug),
   ('/now', AppPage_Send),
   ('/everything', AppPage_PaymentHistory),
-  ('/rpc', AppPage_RPC),
   ('/signout.*', AppPage_SignoutRedirect),
   ('/signin.*', AppPage_SigninRedirect),
   ('/for/.*', AppPage_StaticPaylink),
