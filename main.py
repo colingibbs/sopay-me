@@ -371,7 +371,7 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    page.AppendLine('Note: Payment updates from Checkout may take up to an hour to appear.')
+    page.AppendLine('Note: Payment updates from Checkout may take up to an hour to appear. Sign in to see full names and emails.')
     page.AppendLineShaded('')
 
     is_first = True

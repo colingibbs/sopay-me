@@ -89,23 +89,19 @@ class NewPage():
       logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
       url_picture = ''
 
-    if not text_email:
-      text_email = 'ERROR: No email'
-    elif self.obfuscate_pii:
-      text_email = self.__ObfuscateEmail(text_email)
-
-    if text_name and self.obfuscate_pii:
-      text_name = self.__ObfuscateName(text_name)
-    elif not text_name:
+    text_email = self.__ValidateEmail(text_email)
+    if not text_name:
       text_name = text_email
-      if not text_name:
-        text_name = 'ERROR: No user'
+    text_name = self.__ValidateName(text_name)
 
     # record
 
     text_description = 'Description unknown'
     if record.description:
-      text_description = record.description
+      if record.spm_name:
+        text_description = record.spm_name + ' (' + record.description + ')'
+      else:
+        text_description = record.description
 
     _JUST_MONTH = '%B'
     _JUST_DAY = '%d'
@@ -163,32 +159,14 @@ class NewPage():
       logging.debug('(spmbuilder) Trying to render hover line, SPMUser_sentto is none.')
       url_picture = ''
 
-    if not text_email:
-      text_email = 'ERROR: No email'
-    elif self.obfuscate_pii:
-      text_email = self.__ObfuscateEmail(text_email)
-
-    if text_name and self.obfuscate_pii:
-      text_name = self.__ObfuscateName(text_name)
-    elif not text_name:
+    text_email = self.__ValidateEmail(text_email)
+    if not text_name:
       text_name = text_email
-      if not text_name:
-        text_name = 'ERROR: No user'
+    text_name = self.__ValidateName(text_name)
 
     # record
 
     c14n_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)
-
-    #if record.date_sent:
-    #  text_sent = 'Sent on ' + record.date_sent.strftime(_PRETTY_TIME)
-    #  div_sent = '<div class="icon yes"></div>'
-    #else:
-    #  text_sent = '<span class="maybetext">Not from ' + SPM + '</span>'
-    #  div_sent = '<div class="icon maybe"></div>'
-
-    text_description = 'Description unknown'
-    if record.description:
-      text_description = record.description
 
     text_amount = '0.00'
     if record.amount:
@@ -226,17 +204,9 @@ class NewPage():
       )
       if record.SPMUser_buyer:
         if record.SPMUser_buyer.name:
-          if self.obfuscate_pii:
-            payname = self.__ObfuscateName(record.SPMUser_buyer.name)
-          else:
-            payname = record.SPMUser_buyer.name
-          text_paid_by = 'by ' + payname
+          text_paid_by = 'by ' + self.__ValidateName(record.SPMUser_buyer.name)
         elif record.SPMUser_buyer.email:
-          if self.obfuscate_pii:
-            payname = self.__ObfuscateEmail(record.SPMUser_buyer.email)
-          else:
-            payname = record.SPMUser_buyer.email
-          text_paid_by = 'by ' + payname
+          text_paid_by = 'by ' + self.__ValidateEmail(record.SPMUser_buyer.email)
     else:
       text_paid = '<div class="icon no"></div>Not paid'
       # not created with sopay.me and not paid (cancelled out-of-band)
@@ -283,31 +253,30 @@ class NewPage():
     self.pagebuffer.append(_PAGE_INLINE_SHADED % ({'message': message}))
     
 
-  def __ObfuscateEmail(self, email):
-    """Obfuscates emails."""
-
+  def __ValidateEmail(self, email):
     if not email:
-      return ''
-
-    parts = email.split('@')
-    if parts[0]:
-      if len(parts[0]) > 3:
-        parts[0] = parts[0][0:3] + '***'
-    if parts[1]:
-      if len(parts[1]) > 3:
-        parts[1] = parts[1][0:3] + '***'
-  
-    return parts[0] + '@' + parts[1]
-  
-
-  def __ObfuscateName(self, full_name):
-    """Obfuscates full names by returning first name only."""
-
-    if not full_name:
-      return ''
-
-    parts = full_name.split(' ')
-    if parts[0]:
-      return parts[0]
+      return 'ERROR: No email'
+    elif self.obfuscate_pii:
+      parts = email.split('@')
+      if parts[0]:
+        if len(parts[0]) > 3:
+          parts[0] = parts[0][0:3] + '***'
+      if parts[1]:
+        if len(parts[1]) > 3:
+          parts[1] = parts[1][0:3] + '***'
+      return parts[0] + '@' + parts[1]
     else:
-      return ''
+      return email
+  
+
+  def __ValidateName(self, full_name):
+    if not full_name:
+      return 'ERROR: No name'
+    elif full_name.find('Mobile-User') >= 0:
+      return 'Checkout Mobile User'
+    elif self.obfuscate_pii:
+      parts = full_name.split(' ')
+      if parts[0]:
+        return parts[0]
+    else:
+      return full_name
