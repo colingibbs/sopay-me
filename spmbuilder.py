@@ -38,7 +38,7 @@ class NewPage():
     ### set variables ###
     
     self.title = title
-    self.logged_in_text = 'Not logged in.'
+    self.logged_in_text = '<a href="/signin">sign in</a>'
     if user:
       if user.google_account:
         if user.google_account.email():

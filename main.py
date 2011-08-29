@@ -202,26 +202,29 @@ class AppPage_Default(webapp.RequestHandler):
       uideb = self.request.get('uideb'),
     )
 
-    if spm_loggedin_user:
-      if spm_loggedin_user.checkout_verified:
-        page.AppendLine('Your sopay.me requests are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
-      else:
-        page.AppendLine('Your sopay.me requests are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
+    if not spm_loggedin_user:
+      # welcome note
+      page.AppendLine('&nbsp;')
+      page.AppendLine('The easy way to send payments to friends.')
+
     else:
-      page.AppendLine('Not logged in.  You should <a href="/signin">sign in</a>.')
+      # welcome note
+      if spm_loggedin_user.checkout_verified:
+        page.AppendLine('Your sopay.me\'s are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
+      else:
+        page.AppendLine('Your sopay.me\'s are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
 
-    # display your outstanding purchases, don't bother for things not sent with
-    # sopay me (no need to do advanced keying or grouping at the moment
-
-    page.AppendLineShaded('')
-    for record in records:
-      if record.spm_name:
-        leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
-        if leader_line:
-          # use split url so we get the nice three-digit formatting for #
-          split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
-          page.AppendLine('For ' + split_url[2] + '...')
-        page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
+      # display your outstanding purchases, don't bother for things not sent with
+      # sopay me (no need to do advanced keying or grouping at the moment
+      for record in records:
+        if record.spm_name:
+          page.AppendLineShaded('')
+          leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
+          if leader_line:
+            # use split url so we get the nice three-digit formatting for #
+            split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
+            page.AppendLine('Sopay for <strong>' + split_url[2] + '</strong>...')
+          page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
 
     self.response.out.write(page.Render())
 
