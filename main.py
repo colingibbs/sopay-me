@@ -214,7 +214,7 @@ class AppPage_Default(webapp.RequestHandler):
       if spm_loggedin_user.checkout_verified:
         page.AppendLine('Your sopay.me\'s are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
       else:
-        page.AppendLine('Your sopay.me\'s are listed below. Want to send requests? Well, you can\'t right now, because you don\'t have a checkout seller account set up to send requests. Email Zach if you want one.')
+        page.AppendLine('Your sopay.me\'s are listed below. Want to send them? Well, you can\'t right now, because you don\'t have a checkout seller account set up. Email Zach if you have a checkout seller\'s account and want that set up.')
 
       # display your outstanding purchases, don't bother for things not sent with
       # sopay me (no need to do advanced keying or grouping at the moment
