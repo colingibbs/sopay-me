@@ -9,6 +9,8 @@ import re # for matching email addresses
 import string # for ascii_lowercase (testing only)
 import time
 
+from django.utils import simplejson
+
 from google.appengine.ext import db
 from google.appengine.api import taskqueue # for checkout sync requests
 from google.appengine.api import users
@@ -615,6 +617,102 @@ class AppPage_Send(webapp.RequestHandler):
     # the pay page, so instead redirect to the seller view page
     self.redirect('/everything')
 
+class AppPage_RPC(webapp.RequestHandler):
+  """Checkout account required."""
+
+  def __init__(self):
+    webapp.RequestHandler.__init__(self)
+    self.methods = RPCMethods()
+
+
+  def get(self):
+
+    ##### identity #####
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    if not spm_loggedin_user.checkout_verified:
+      self.response.out.write(simplejson.dumps('Your account needs to be verified'))
+      return
+
+    ##### handle RPC requests #####
+    func = None
+    
+    action = self.request.get('action')
+    if action:
+      if action[0] == '_':
+        self.error(403)
+    	return
+      else:
+        func = getattr(self.methods, action, None)
+    		
+    if not func:
+      self.error(404) #action not found
+      return
+    	
+    args = ()
+    while True:
+      key = 'arg%d' % len(args)
+      val = self.request.get(key)
+      if val:
+        args += (simplejson.loads(val),)
+      else:
+        break
+    result = func(*args)
+    self.response.out.write(simplejson.dumps(result))
+    
+class RPCMethods:
+	
+  def GetAll(self, *args):
+  
+  	#need the user's name for the db lookup
+  	#using a random parameter for GetSPMUser().  hopefully won't break anything
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser('blah')
+    
+    
+    ##### lifted from another method - use this to get the records #####
+
+    # query as an iterable instead of fetch so we get all the records
+    records = db.GqlQuery(
+      'SELECT * FROM PurchaseRecord '
+      'WHERE SPMUser_seller = :1 '
+      'ORDER BY date_latest DESC ',
+      spm_loggedin_user
+    )
+    
+    _OTHER_STRING = 'For other things (invoices not sent with sopay.me)'
+    _RECORD_STRING = 'For %(forpart)s (%(serialpart)s)'
+ 
+    # group the records into a dict of lists keyed off of url. to be considered
+    # in a grouping, the record must have a c14n url and a valid date_sent set,
+    # otherwise stick it into the 'other things' category cause it wasn't sent
+    # using sopay.me
+    sort_buckets = {}
+    time_sort = []
+    for record in records:
+      key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
+      if not key_url:
+        key_url = _OTHER_STRING
+      else:
+        # use split url so we get the nice three-digit formatting for #
+        split_url = key_url.split('/') # (''/'for'/'name'/'serial')
+        key_url = _RECORD_STRING % ({
+          'forpart': split_url[2], 
+          'serialpart': split_url[3],
+        })
+      try:
+        sort_buckets[key_url]
+      except KeyError:
+        sort_buckets[key_url] = []
+        
+      #don't add the entire record.  just add the stuff we need for the Android app
+      #TODO: rewrite this once we know what we want to show in the app
+      sort_buckets[key_url].append(record.checkout_buyer_name)
+      sort_buckets[key_url].append(record.amount)
+      sort_buckets[key_url].append(record.description)
+      
+    return sort_buckets
 
 ################################################################################
 
@@ -627,6 +725,7 @@ application = webapp.WSGIApplication([
   ('/debug.*', AppPage_Debug),
   ('/now', AppPage_Send),
   ('/everything', AppPage_PaymentHistory),
+  ('/rpc', AppPage_RPC),
   ('/signout.*', AppPage_SignoutRedirect),
   ('/signin.*', AppPage_SigninRedirect),
   ('/for/.*', AppPage_StaticPaylink),
