@@ -621,6 +621,7 @@ class AppPage_Send(webapp.RequestHandler):
     # the pay page, so instead redirect to the seller view page
     self.redirect('/everything')
 
+
 class AppPage_RPC(webapp.RequestHandler):
   """Checkout account required."""
 
@@ -664,7 +665,8 @@ class AppPage_RPC(webapp.RequestHandler):
         break
     result = func(*args)
     self.response.out.write(simplejson.dumps(result))
-    
+
+
 class RPCMethods:
 	
   def GetAll(self, *args):
