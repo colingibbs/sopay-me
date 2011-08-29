@@ -223,7 +223,7 @@ class AppPage_Default(webapp.RequestHandler):
           if leader_line:
             # use split url so we get the nice three-digit formatting for #
             split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
-            page.AppendLine('Sopay for <strong>' + split_url[2] + '</strong>...')
+            page.AppendLine('So pay for <strong>' + split_url[2] + '</strong>...')
           page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
 
     self.response.out.write(page.Render())
