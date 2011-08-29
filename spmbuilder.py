@@ -21,9 +21,9 @@ class NewPage():
 
     # set email obfuscation 
     if user:
-      self.obfuscate_email = False
+      self.obfuscate_pii = False
     else:
-      self.obfuscate_email = True
+      self.obfuscate_pii = True
     
     ### uideb controls ####
     # m: force mobile view
@@ -33,7 +33,7 @@ class NewPage():
       self.is_mobile = True
 
     if 'o' in uideb:
-      self.obfuscate_email = True
+      self.obfuscate_pii = True
 
     ### set variables ###
     
@@ -91,9 +91,12 @@ class NewPage():
 
     if not text_email:
       text_email = 'ERROR: No email'
-    elif self.obfuscate_email:
+    elif self.obfuscate_pii:
       text_email = self.__ObfuscateEmail(text_email)
-    if not text_name:
+
+    if text_name and self.obfuscate_pii:
+      text_name = self.__ObfuscateName(text_name)
+    elif not text_name:
       text_name = text_email
       if not text_name:
         text_name = 'ERROR: No user'
@@ -162,9 +165,12 @@ class NewPage():
 
     if not text_email:
       text_email = 'ERROR: No email'
-    elif self.obfuscate_email:
+    elif self.obfuscate_pii:
       text_email = self.__ObfuscateEmail(text_email)
-    if not text_name:
+
+    if text_name and self.obfuscate_pii:
+      text_name = self.__ObfuscateName(text_name)
+    elif not text_name:
       text_name = text_email
       if not text_name:
         text_name = 'ERROR: No user'
@@ -220,9 +226,17 @@ class NewPage():
       )
       if record.SPMUser_buyer:
         if record.SPMUser_buyer.name:
-          text_paid_by = 'by ' + record.SPMUser_buyer.name
+          if self.obfuscate_pii:
+            payname = self.__ObfuscateName(record.SPMUser_buyer.name)
+          else:
+            payname = record.SPMUser_buyer.name
+          text_paid_by = 'by ' + payname
         elif record.SPMUser_buyer.email:
-          text_paid_by = 'by ' + record.SPMUser_buyer.email
+          if self.obfuscate_pii:
+            payname = self.__ObfuscateEmail(record.SPMUser_buyer.email)
+          else:
+            payname = record.SPMUser_buyer.email
+          text_paid_by = 'by ' + payname
     else:
       text_paid = '<div class="icon no"></div>Not paid'
       # not created with sopay.me and not paid (cancelled out-of-band)
@@ -273,7 +287,7 @@ class NewPage():
     """Obfuscates emails."""
 
     if not email:
-      return None
+      return ''
 
     parts = email.split('@')
     if parts[0]:
@@ -285,3 +299,15 @@ class NewPage():
   
     return parts[0] + '@' + parts[1]
   
+
+  def __ObfuscateName(self, full_name):
+    """Obfuscates full names by returning first name only."""
+
+    if not full_name:
+      return ''
+
+    parts = full_name.split(' ')
+    if parts[0]:
+      return parts[0]
+    else:
+      return ''
