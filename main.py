@@ -213,22 +213,15 @@ class AppPage_Default(webapp.RequestHandler):
     # display your outstanding purchases, don't bother for things not sent with
     # sopay me (no need to do advanced keying or grouping at the moment
 
-    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
-
+    page.AppendLineShaded('')
     for record in records:
-      leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
-      if leader_line:
-        # use split url so we get the nice three-digit formatting for #
-        split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
-        leader_line = _RECORD_STRING % ({
-          'forpart': split_url[2], 
-          'serialpart': split_url[3],
-        })
-        page.AppendLineShaded(leader_line)
-        if spm_loggedin_user:
-          page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
-        else:
-          page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
+      if record.spm_name:
+        leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
+        if leader_line:
+          # use split url so we get the nice three-digit formatting for #
+          split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
+          page.AppendLine('For ' + split_url[2] + '...')
+        page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
 
     self.response.out.write(page.Render())
 
