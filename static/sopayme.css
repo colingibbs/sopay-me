@@ -57,27 +57,34 @@ input {
 .boxl-hparent {
   display: box;
   display: -webkit-box;
+  display: -moz-box;
   box-orient: horizontal;
   -webkit-box-orient: horizontal;
+  -moz-box-orient: horizontal;
 }
 
 .boxl-vparent {
   display: box;
   display: -webkit-box;
+  display: -moz-box;
   box-orient: vertical;
   -webkit-box-orient: vertical;
+  -moz-box-orient: vertical;
 }
 
 .boxl-content {
   display: box;
   display: -webkit-box;
+  display: -moz-box;
   box-flex: 1;
   -webkit-box-flex: 1;
+  -mox-box-flex: 1;
 }
 
 .boxl-spacer {
   box-flex: 1000;
   -webkit-box-flex: 1000;
+  -moz-box-flex: 1000;
 }
 
 /* image divs */
