@@ -989,10 +989,50 @@ class AppPage_RPC(webapp.RequestHandler):
         break
     result = func(*args)
     self.response.out.write(simplejson.dumps(result))
+    
+  def post(self):
+  
+    logging.debug('got a post request')
+    
+    ##### identity #####
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    if not spm_loggedin_user.checkout_verified:
+      self.response.out.write(simplejson.dumps('Your account needs to be verified'))
+      return
+    
+    
+    args = simplejson.loads(self.request.body)
+    func = args['action']
+    logging.debug(func)
+    if func[0] == '_':
+      self.error(403) # access denied
+      return
+
+    func = getattr(self.methods, func, None)
+    if not func:
+      self.error(404) # file not found
+      return
+
+    result = func(args)
+    self.response.out.write(simplejson.dumps(result))
 
 
 class RPCMethods:
 	
+  def Submit(self, args):	
+    """expects to get these arguments:
+    title, details, {emails}, {amounts}
+    """
+    logging.debug('got submit order request from Android')
+    logging.debug('Title: ' + args['title'])
+    logging.debug('Details: ' + args['details'])
+    logging.debug('Emails: ' + args['emails'])
+    logging.debug('Amount: ' + args['amount'])
+    
+    return True
+
   def GetAll(self, *args):
   
   	#need the user's name for the db lookup

@@ -2,7 +2,7 @@ application: sopay-me
 # When testing, use version: 'id-test'.  To publish, change to 'live' but do not
 # sumbit back to source control with 'version: live'. Source control should
 # always be 'test' to prevent accidentally deploying tests to live traffic.
-version: test
+version: cgibbs-test
 runtime: python
 api_version: 1
 
