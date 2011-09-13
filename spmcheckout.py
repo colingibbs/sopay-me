@@ -253,7 +253,7 @@ class CheckoutSellerIntegration:
 
       # if there's no date at all in this record, at least write the timestamp for
       # sorting purposes (checkout sometimes doesn't notify of payment
-      # this_recordoperly or is super-delayed, so this hack is necessary)
+      # properly or is super-delayed, so this hack is necessary)
       if not this_record.date_latest:
         this_record.date_latest = notification_timestamp
 
@@ -268,15 +268,23 @@ class CheckoutSellerIntegration:
         this_record.SPMUser_buyer.name = notification_checkout_buyer_name
         this_record.SPMUser_buyer.put()
 
-      this_record.checkout_buyer_email = notification_checkout_buyer_email
-      # this is only useful for helping backfill from non-spm stuff
+      if not this_record.checkout_buyer_email:
+        this_record.checkout_buyer_email = notification_checkout_buyer_email
+      
+      # this is only useful for helping backfill from non-spm stuff, but we need
+      # existence checks to prevent overwriting data
       if not this_record.sent_to_email:
         this_record.sent_to_email = notification_checkout_buyer_email
-      this_record.checkout_buyer_name = notification_checkout_buyer_name
-      this_record.checkout_buyer_id = notification_checkout_buyer_id
-      this_record.amount = notification_amount
-      this_record.currency = notification_currency
-      this_record.description = notification_description
+      if not this_record.checkout_buyer_name:
+        this_record.checkout_buyer_name = notification_checkout_buyer_name
+      if not this_record.checkout_buyer_id:
+        this_record.checkout_buyer_id = notification_checkout_buyer_id
+      if not this_record.amount:
+        this_record.amount = notification_amount
+      if not this_record.currency:
+        this_record.currency = notification_currency
+      if not this_record.description:
+        this_record.description = notification_description
 
       # try to identify and parse spmid
       spm_invoice_id = ''
