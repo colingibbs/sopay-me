@@ -224,13 +224,8 @@ class CheckoutSellerIntegration:
           # check float() to catch enter 1.00 return 1.0
           if float(existing_records[0].amount) == float(notification_amount):
             if existing_records[0].currency == notification_currency:
-              # check two different description strings because of the change in
-              # making checkout receipts more readable
-              desc_string_new = existing_records[0].spm_name + ' (' + existing_records[0].description + ')'
-              desc_string_old = existing_records[0].description
-              if (desc_string_old == notification_description) or (desc_string_new == notification_description):
-                this_record = existing_records[0]
-                logging.debug('MATCH! Going to update this one.')
+              this_record = existing_records[0]
+              logging.debug('MATCH! Going to update this one.')
           if not this_record:
             # this case means that the name/serial/transaction matched, but one
             # of the other details didn't match.  So we just create a new record
