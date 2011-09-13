@@ -898,6 +898,8 @@ class AppPage_Send(webapp.RequestHandler):
         description = new_pr.spm_name + ' (' + new_pr.description + ')',
         amount = new_pr.amount,
         currency = new_pr.currency,
+        # if you change any of the above fields, make sure to change the
+        # checkout sync code appropriately as well, as it checks all four
       )
       new_pr.checkout_payurl = checkout_payurl
 

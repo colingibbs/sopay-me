@@ -193,29 +193,6 @@ class CheckoutSellerIntegration:
         notification_private_data = None
 
 
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-      # used for testing locally on zach's desktop
-      todo_remove_test_override_date_sent = None
-      if notification_primary == 'new-order-notification' and notification_private_data:
-        if notification_private_data == 'sopay.me/for/TEST_20110720':
-          notification_private_data = 'sopay.me/for/duptest/000/' + notification_amount[2]
-          todo_remove_test_override_date_sent = datetime(2011, 1, 11, 1, 11)
-          if notification_amount == '0.77':
-            notification_checkout_buyer_email = 'zpm@google.com'
-        elif notification_private_data == '340101':
-          notification_private_data = 'sopay.me/for/test2/000/0'
-          todo_remove_test_override_date_sent = datetime(2011, 2, 22, 2, 22)
-        elif notification_private_data == 'sopay.me/for/TEST_20110720_439':
-          notification_private_data = 'sopay.me/for/test3-nosend/000/0'
-        elif notification_private_data == 'sopay.me/for/TEST_20110720_number2':
-          notification_private_data = 'sopay.me/for/test4-nosend/000/0'
-        elif notification_private_data == 'sopay.me/for/Q':
-          notification_private_data = 'sopay.me/for/test5/000/0'
-          todo_remove_test_override_date_sent = datetime(2011, 5, 5, 5, 5)
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-
-
-
       # output status for debugging
       #logging.debug('Running update for...')
       #if notification_private_data:
@@ -247,7 +224,11 @@ class CheckoutSellerIntegration:
           # check float() to catch enter 1.00 return 1.0
           if float(existing_records[0].amount) == float(notification_amount):
             if existing_records[0].currency == notification_currency:
-              if existing_records[0].description == notification_description:
+              # check two different description strings because of the change in
+              # making checkout receipts more readable
+              desc_string_new = existing_records[0].spm_name + ' (' + existing_records[0].description + ')'
+              desc_string_old = existing_records[0].description
+              if (desc_string_old == notification_description) or (desc_string_new == notification_description):
                 this_record = existing_records[0]
                 logging.debug('MATCH! Going to update this one.')
           if not this_record:
@@ -269,23 +250,6 @@ class CheckoutSellerIntegration:
         )
 
       # .... by this point this_record definitely exists, so let the updating begin ....
-
-
-
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-      # used for testing locally on zach's desktop
-      if todo_remove_test_override_date_sent:
-        if not this_record.date_sent:
-          this_record.date_sent = todo_remove_test_override_date_sent
-        elif todo_remove_test_override_date_sent > this_record.date_sent:
-          this_record.date_sent = todo_remove_test_override_date_sent
-        if not this_record.date_latest:
-          this_record.date_latest = todo_remove_test_override_date_sent      
-        elif todo_remove_test_override_date_sent > this_record.date_latest:
-          this_record.date_latest = todo_remove_test_override_date_sent
-      # TODO: # REMOVE THIS HACK # REMOVE THIS HACK # REMOVE THIS HACK
-
-
 
       if parsed_id:
         this_record.spm_name = parsed_id['name']
