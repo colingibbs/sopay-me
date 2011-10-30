@@ -11,9 +11,14 @@ default_expiration: 0
 handlers:
 - url: /static
   static_dir: static
+# Background task queues
 - url: /task/.*
-  script: main.py
+  script: main_tasks.py
   login: admin
+# API
+- url: /rpc.*
+  script: main_rpc.py
+# Web UI functionality
 - url: /admin.*
   script: main.py
   login: admin
