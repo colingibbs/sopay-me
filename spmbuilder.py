@@ -41,7 +41,11 @@ class NewPage():
 
     ### set variables ###
     
-    self.user_can_sell = user.checkout_verified
+    if user:
+      self.user_can_sell = user.checkout_verified
+    else:
+      self.user_can_sell = False
+
     self.title = title
     self.logged_in_text = '<a href="/signin">sign in</a>'
     if user:
