@@ -22,9 +22,13 @@ handlers:
 - url: /rpc.*
   script: main_rpc.py
 
-# Web UI functionality
+# Admin/background functionality
 - url: /admin.*
   script: main_user.py
   login: admin
+- url: /debug.*
+  script: main_admin.py
+
+# Web UI functionliaty
 - url: /.*
   script: main_user.py
