@@ -22,20 +22,11 @@ class AppPage_Admin(webapp.RequestHandler):
 
 
   def __init__(self):
-    self._TITLE = 'admin'
+    self._TITLE = SPM + 'admin'
 
 
   def get(self):
     """Admin-only stats page.  (Restricted in app.yaml)"""
-
-    ##### identity #####
-
-    user_manager = spmuser.UserManager()
-    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
-
-    if not spm_loggedin_user:
-      self.redirect('/')
-      return
 
     ##### setup #####
 
@@ -238,7 +229,6 @@ class AppPage_Debug(webapp.RequestHandler):
 
 
 application = webapp.WSGIApplication([
-  # User-facing
   ('/admin.*', AppPage_Admin),
   ('/debug.*', AppPage_Debug),
 ],debug=True)

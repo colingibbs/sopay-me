@@ -24,7 +24,7 @@ handlers:
 
 # Admin/background functionality
 - url: /admin.*
-  script: main_user.py
+  script: main_admin.py
   login: admin
 - url: /debug.*
   script: main_admin.py
