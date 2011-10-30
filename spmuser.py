@@ -12,7 +12,6 @@ from spmutil import *
 # TODO remove when we remove zachhack
 import spmdb
 import spmcheckout
-from datetime import datetime, timedelta
 
 
 ################################################################################
@@ -91,7 +90,7 @@ class UserManager():
     return spm_user
 
 
-  def GetSPMUser(self, sudo_email):
+  def GetSPMUser(self, sudo_email = None):
     """Performs login check.  Overrides if sudo specified and the current user
     is an admin.  Returns spm_user db object."""
 

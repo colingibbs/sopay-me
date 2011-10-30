@@ -13,10 +13,13 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
+from django.utils import simplejson # for encoding responses
+
 # local imports
 import spmdb
 import spmemail
 import spmcheckout
+import spmnewbill   # used in send now class
 import spmuser
 from spmutil import *
 
@@ -25,39 +28,13 @@ from spmutil import *
 
 
 class RPCMethods:
-	
-  def __ReserveNextSerialsTransaction(self, spm_name, number_to_reserve):
-    """ Run this function as a transaction.  Reserves the next serial numbers."""
 
-    count_record = None
-    count_records = db.GqlQuery(
-      'SELECT * FROM CountStore WHERE ANCESTOR IS :1',
-      db.Key.from_path('CountURL', spm_name)
-    ).fetch(limit=2)
-    if len(count_records) == 1:
-      count_record = count_records[0]
-    elif len(count_records) >= 2:
-      logging.critical('More than one record returned from ancestor query')
-
-    if count_record:
-      cur_count = count_record.url_count
-      count_record.url_count = cur_count + number_to_reserve
-      count_record.put()
-      return cur_count
-    else:
-      new_record = spmdb.CountStore(
-        parent = db.Key.from_path('CountURL', spm_name),
-        url_count = number_to_reserve
-      )
-      new_record.put()
-      return 0
 	
   def Submit(self, args):	
  
-    #need the user's name for the db lookup
-  	#using a random parameter for GetSPMUser().  hopefully won't break anything
+    # need the user's name for the db lookup
     user_manager = spmuser.UserManager()
-    spm_loggedin_user = user_manager.GetSPMUser('blah')
+    spm_loggedin_user = user_manager.GetSPMUser() # no sudo from app
    
     """expects to get these arguments:
     title, details, {emails}, {amounts}
@@ -125,9 +102,8 @@ class RPCMethods:
     ##### create records and checkout urls for this #####
     
     # reserve id for this
-    reserved_url_serial = db.run_in_transaction(
-      self.__ReserveNextSerialsTransaction, newcr_spm_name, 1
-    )
+    new_bill = spmnewbill.NewBill()
+    reserved_url_serial = new_bill.ReserveNextSerial(newcr_spm_name)
 
     item_count = 0
     for newcr_amount, email in form_amount_email_pairs:
