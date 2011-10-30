@@ -255,6 +255,78 @@ class RPCMethods:
 ################################################################################
 
 
+class AppPage_RPC(webapp.RequestHandler):
+  """Checkout account required."""
+
+  def __init__(self):
+    webapp.RequestHandler.__init__(self)
+    self.methods = RPCMethods()
+
+  def get(self):
+
+    ##### identity #####
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    if not spm_loggedin_user.checkout_verified:
+      self.response.out.write(simplejson.dumps('Your account needs to be verified'))
+      return
+
+    ##### handle RPC requests #####
+    func = None
+    
+    action = self.request.get('action')
+    if action:
+      if action[0] == '_':
+        self.error(403)
+    	return
+      else:
+        func = getattr(self.methods, action, None)
+    		
+    if not func:
+      self.error(404) #action not found
+      return
+    	
+    args = ()
+    while True:
+      key = 'arg%d' % len(args)
+      val = self.request.get(key)
+      if val:
+        args += (simplejson.loads(val),)
+      else:
+        break
+    result = func(*args)
+    self.response.out.write(simplejson.dumps(result))
+    
+  def post(self):
+      
+    ##### identity #####
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    if not spm_loggedin_user.checkout_verified:
+      self.response.out.write(simplejson.dumps('Your account needs to be verified'))
+      return
+    
+    
+    args = simplejson.loads(self.request.body)
+    func = args['action']
+    if func[0] == '_':
+      self.error(403) # access denied
+      return
+
+    func = getattr(self.methods, func, None)
+    if not func:
+      self.error(404) # file not found
+      return
+
+    result = func(args)
+    self.response.out.write(simplejson.dumps(result))
+
+
+################################################################################
+
+
 application = webapp.WSGIApplication([
   # API
   ('/rpc', AppPage_RPC),
