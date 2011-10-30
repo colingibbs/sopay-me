@@ -177,7 +177,7 @@ input {
 }
 
 .button-disabled {
-  color: gray;
+  color: #666;
 }
 
 .button-normal {

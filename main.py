@@ -535,6 +535,7 @@ class AppPage_Default(webapp.RequestHandler):
       # welcome note
       if not spm_loggedin_user.checkout_verified:
         page.AppendLine('Your sopay.me\'s are listed below. Want to send new sopay.me\'s? Well, you can\'t right now, because you don\'t have a Google Checkout seller account set up. Email Zach if you have one and want to participate in the sopay.me beta.')
+        page.AppendLineShaded('')
 
       # display your outstanding purchases, don't bother for things not sent with
       # sopay me (no need to do advanced keying or grouping at the moment
@@ -544,7 +545,8 @@ class AppPage_Default(webapp.RequestHandler):
           if leader_line:
             # use split url so we get the nice three-digit formatting for #
             split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
-            page.AppendLine('So pay for <strong>' + split_url[2] + '</strong>...')
+            split_name = record.SPMUser_seller.name.split(' ') # TODO: probably some verification here
+            page.AppendLine('... so pay ' + split_name[0] + ' for <strong>' + split_url[2] + '</strong> ...')
           page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
           page.AppendLineShaded('')
 
@@ -583,8 +585,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       spm_loggedin_user
     )
 
-    _OTHER_STRING = 'For other things (invoices not sent with sopay.me)'
-    _RECORD_STRING = 'For <strong>%(forpart)s</strong> (<em>%(serialpart)s</em>)'
+    _OTHER_STRING = '... for other things (invoices not sent with sopay.me) ...'
+    _RECORD_STRING = '... for <strong>%(forpart)s</strong> ...'
 
     # group the records into a dict of lists keyed off of url. to be considered
     # in a grouping, the record must have a c14n url and a valid date_sent set,
@@ -596,13 +598,6 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       key_url = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
       if not key_url:
         key_url = _OTHER_STRING
-      else:
-        # use split url so we get the nice three-digit formatting for #
-        split_url = key_url.split('/') # (''/'for'/'name'/'serial')
-        key_url = _RECORD_STRING % ({
-          'forpart': split_url[2], 
-          'serialpart': split_url[3],
-        })
       try:
         sort_buckets[key_url]
       except KeyError:
@@ -614,7 +609,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     # always sort 'other' last (these are the things not sent with spm)
     list_to_sort = []
     for url in sort_buckets.keys():
-      date_max = datetime(1985,9,17)
+      date_max = datetime(1985,9,17) # way in the past... like when zach was born
       if not url == _OTHER_STRING:
         for record in sort_buckets[url]:
           if record.date_latest > date_max:
@@ -635,7 +630,15 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     page.AppendNavbar()
 
     for date, url_key in list_to_sort:
-      page.AppendLine(url_key)
+      if not url_key == _OTHER_STRING:
+        split_url = url_key.split('/') # (''/'for'/'name'/'serial')
+        display_url = _RECORD_STRING % ({
+          'forpart': split_url[2], 
+          #'serialpart': split_url[3],
+        })
+        page.AppendLine(display_url)
+      else:
+        page.AppendLine(_OTHER_STRING)
       for record in sort_buckets[url_key]:
         if spm_loggedin_user:
           page.AppendHoverRecord(record = record, linkify = True)

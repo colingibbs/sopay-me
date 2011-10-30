@@ -41,6 +41,7 @@ class NewPage():
 
     ### set variables ###
     
+    self.user_can_sell = user.checkout_verified
     self.title = title
     self.logged_in_text = '<a href="/signin">sign in</a>'
     if user:
@@ -264,17 +265,27 @@ class NewPage():
     if self.nav_code == 'NAV_THEYPAY':
       button_they = '<span ' + button_active_class + '>' + button_they_text + '</span>'
     else:
-      button_they = '<span ' + button_class + '><a href=\'/everything\'>' + button_they_text + '</a></span>'
+      if self.user_can_sell:
+        button_they = '<span ' + button_class + '><a href=\'/everything\'>' + button_they_text + '</a></span>'
+      else:
+        button_they = '<span ' + button_disabled_class + '>' + button_they_text + '</span>'
 
     button_send_text = 'Send Now'
     if self.nav_code == 'NAV_SENDNOW':
       button_send = '<span ' + button_active_class + '>' + button_send_text + '</span>'
     else:
-      button_send = '<span ' + button_class + '><a href=\'/now\'>' + button_send_text + '</a></span>'
+      if self.user_can_sell:
+        button_send = '<span ' + button_class + '><a href=\'/now\'>' + button_send_text + '</a></span>'
+      else:
+        button_send = '<span ' + button_disabled_class + '>' + button_send_text + '</span>'
+
+    button_settings_text = 'Settings'
+    #if self.nav_code == 'SETTINGS':
+    button_settings = '<span ' + button_disabled_class + '>' + button_settings_text + '</span>'
 
     separator = '&nbsp;&nbsp;|&nbsp;&nbsp;'
     navbar = ('<div class="line">' + button_you + separator + button_they +
-        separator + button_send + '</div>')
+        separator + button_send + separator + button_settings + '</div>')
 
     self.pagebuffer.append(navbar)
     self.AppendLineShaded('')
