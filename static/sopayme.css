@@ -171,3 +171,14 @@ input {
 .no {
   background-color: #D14836;
 }
+
+.button-active {
+  font-weight: bold;
+}
+
+.button-disabled {
+  color: gray;
+}
+
+.button-normal {
+}

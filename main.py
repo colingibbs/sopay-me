@@ -37,7 +37,7 @@ class AppPage_Admin(webapp.RequestHandler):
 
 
   def get(self):
-    """Publicly visible debug page.  Make sure requests here are limited to current user."""
+    """Admin-only stats page.  (Restricted in app.yaml)"""
 
     ##### identity #####
 
@@ -523,31 +523,30 @@ class AppPage_Default(webapp.RequestHandler):
       user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
+      nav_code = "NAV_YOUPAY",
     )
 
     if not spm_loggedin_user:
       # welcome note
-      page.AppendLine('&nbsp;')
-      page.AppendLine('The easy way to send payments to friends.')
-
+      page.AppendLine('<br/><br/>The easy way to send payments to friends.')
+  
     else:
+      page.AppendNavbar()
       # welcome note
-      if spm_loggedin_user.checkout_verified:
-        page.AppendLine('Your sopay.me\'s are listed below. Also go see <a href="/everything">everything</a> you\'ve sent or <a href="/now">send now</a>.')
-      else:
+      if not spm_loggedin_user.checkout_verified:
         page.AppendLine('Your sopay.me\'s are listed below. Want to send new sopay.me\'s? Well, you can\'t right now, because you don\'t have a Google Checkout seller account set up. Email Zach if you have one and want to participate in the sopay.me beta.')
 
       # display your outstanding purchases, don't bother for things not sent with
       # sopay me (no need to do advanced keying or grouping at the moment
       for record in records:
         if record.spm_name:
-          page.AppendLineShaded('')
           leader_line = BuildSPMURL(record.spm_name, record.spm_serial, relpath=True)  
           if leader_line:
             # use split url so we get the nice three-digit formatting for #
             split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
             page.AppendLine('So pay for <strong>' + split_url[2] + '</strong>...')
           page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
+          page.AppendLineShaded('')
 
     self.response.out.write(page.Render())
 
@@ -566,7 +565,10 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
     user_manager = spmuser.UserManager()
     spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
 
-    if not spm_loggedin_user.checkout_verified:
+    if not spm_loggedin_user:
+      self.redirect('/')
+      return
+    elif not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
 
@@ -627,18 +629,19 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
+      nav_code = 'NAV_THEYPAY',
     )
 
-    page.AppendLine('Send a new invoice <a href="/now"> now</a>.')
+    page.AppendNavbar()
 
     for date, url_key in list_to_sort:
-      page.AppendLineShaded('')
       page.AppendLine(url_key)
       for record in sort_buckets[url_key]:
         if spm_loggedin_user:
           page.AppendHoverRecord(record = record, linkify = True)
         else:
           page.AppendHoverRecord(record = record, linkify = True)
+      page.AppendLineShaded('')
 
     self.response.out.write(page.Render())
 
@@ -690,12 +693,14 @@ class AppPage_StaticPaylink(webapp.RequestHandler):
       user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
+      nav_code = None,
     )
 
     top_text = 'Note: Payment updates from Checkout may take up to an hour to appear.'
     if not spm_loggedin_user:
       top_text += ' Sign in to see full names and emails.'
 
+    page.AppendNavbar()
     page.AppendLine(top_text)
     page.AppendLineShaded('')
 
@@ -761,7 +766,10 @@ class AppPage_Send(webapp.RequestHandler):
     user_manager = spmuser.UserManager()
     spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
 
-    if not spm_loggedin_user.checkout_verified:
+    if not spm_loggedin_user:
+      self.redirect('/')
+      return
+    elif not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
 
@@ -792,8 +800,10 @@ class AppPage_Send(webapp.RequestHandler):
       user = spm_loggedin_user,
       useragent = self.request.headers.get('user_agent'),
       uideb = self.request.get('uideb'),
+      nav_code = "NAV_SENDNOW",
     )
 
+    page.AppendNavbar()
     page.AppendLine('There\'s like, uh, no input validation on this page. You can and will break it if you\'re dumb.')
 
     page.AppendLine(_PAGE_CONTENT % {'posturl': self.request.path})
@@ -1228,7 +1238,7 @@ class RPCMethods:
         # use split url so we get the nice three-digit formatting for #
         split_url = key_url.split('/') # (''/'for'/'name'/'serial')
         key_url = _RECORD_STRING % ({
-          'forpart': split_url[2], 
+          'forpart': split_url[2],
           'serialpart': split_url[3],
         })
       try:

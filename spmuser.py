@@ -92,7 +92,8 @@ class UserManager():
 
 
   def GetSPMUser(self, sudo_email):
-    """Performs login check.  Overrides if sudo specified and admin.  Returns spm_user db object."""
+    """Performs login check.  Overrides if sudo specified and the current user
+    is an admin.  Returns spm_user db object."""
 
     spm_loggedin_user = self.__GetSPMUserByGoogleAccount(users.get_current_user())
     if users.is_current_user_admin():
