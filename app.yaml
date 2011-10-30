@@ -20,7 +20,7 @@ handlers:
   script: main_rpc.py
 # Web UI functionality
 - url: /admin.*
-  script: main.py
+  script: main_user.py
   login: admin
 - url: /.*
-  script: main.py
+  script: main_user.py
