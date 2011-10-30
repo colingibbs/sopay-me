@@ -199,7 +199,6 @@ class AppPage_RPC(webapp.RequestHandler):
       self.response.out.write(simplejson.dumps('Your account needs to be verified'))
       return
     
-    
     args = simplejson.loads(self.request.body)
     func = args['action']
     if func[0] == '_':
