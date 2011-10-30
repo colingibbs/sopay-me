@@ -121,7 +121,7 @@ class RPCMethods:
     
     logging.debug('got submit order request from Android')
     logging.debug('Title: ' + form_name)
-    logging.debug('Details: ' + form_details)
+    logging.debug('Details: ' + form_description)
     for e in emails:
       logging.debug('Emails: ' + e)
     for a in amounts:
@@ -143,13 +143,13 @@ class RPCMethods:
       if new_bill.CommitAndSend(spm_loggedin_user = spm_loggedin_user):
         # note that there's a datastore delay so we can't redirect immediately to
         # the pay page, so instead redirect to the seller view page
-        self.redirect('/everything')  
+        pass # TODO(cgibbs): respond to the app with success
       else:
         # commit and send failed
-        self.redirect('/error')
+        pass # TODO(cgibbs): respond to the app with failure code
     else:
       # validation failed
-      self.redirect('/error')
+      pass # TODO(cgibbs): respond to the app with failure code
     
     return True
 
