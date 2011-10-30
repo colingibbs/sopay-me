@@ -1,21 +1,14 @@
-# TODO: these imports are before the main, main_rpc, main_tasks split.  they all
+# TODO: these imports are before the main_user, main_rpc, main_tasks split.  they all
 # may or may not be needed, but I haven't bothered to check yet - zpm
 
 import calendar
-import cgi # parsing form input from /now
 from datetime import datetime, timedelta
+import time
 import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
 import os # for setting timezone
-import pprint # for debugging print out
-import random # for testing only
 import re # for matching email addresses
-import string # for ascii_lowercase (testing only)
-import time
-
-from django.utils import simplejson
 
 from google.appengine.ext import db
-from google.appengine.api import taskqueue # for checkout sync requests
 from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
@@ -24,7 +17,6 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 import spmdb
 import spmemail
 import spmcheckout
-import spmbuilder
 import spmuser
 from spmutil import *
 
