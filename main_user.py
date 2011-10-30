@@ -350,7 +350,7 @@ class AppPage_Default(webapp.RequestHandler):
             # use split url so we get the nice three-digit formatting for #
             split_url = leader_line.split('/') # (''/'for'/'name'/'serial')
             split_name = record.SPMUser_seller.name.split(' ') # TODO: probably some verification here
-            page.AppendLine('... so pay ' + split_name[0] + ' for <strong>' + split_url[2] + '</strong> ...')
+            page.AppendLine('Pay ' + split_name[0] + ' for <strong>' + split_url[2] + '</strong> ...')
           page.AppendHoverRecord(record = record, linkify = True, show_seller_instead = True)
           page.AppendLineShaded('')
 
@@ -389,8 +389,8 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
       spm_loggedin_user
     )
 
-    _OTHER_STRING = '... for other things (invoices not sent with sopay.me) ...'
-    _RECORD_STRING = '... for <strong>%(forpart)s</strong> ...'
+    _OTHER_STRING = 'For other things (invoices not sent with sopay.me) ...'
+    _RECORD_STRING = 'For <strong>%(forpart)s</strong> ...'
 
     # group the records into a dict of lists keyed off of url. to be considered
     # in a grouping, the record must have a c14n url and a valid date_sent set,
