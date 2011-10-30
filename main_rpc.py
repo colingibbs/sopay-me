@@ -39,14 +39,14 @@ class RPCMethods:
     """expects to get these arguments:
     title, details, {emails}, {amounts}
     """
-    url = args['title'] 
-    #discovered that Zach called it URL (need to make consistent for better readability)
+    form_name = args['title'] 
+    # discovered that Zach called it URL (need to make consistent for better readability)
     
-    details = args['details']
+    form_description = args['details']
     temp_emails = args['emails']
     temp_amounts = args['amounts']
     
-    #working around some Python typing weirdness
+    # working around some Python typing weirdness
     if not isinstance(temp_emails, list):
       emails = [temp_emails]
     else:
@@ -57,124 +57,39 @@ class RPCMethods:
       amounts = temp_amounts
     
     logging.debug('got submit order request from Android')
-    logging.debug('Title: ' + url)
-    logging.debug('Details: ' + details)
+    logging.debug('Title: ' + form_name)
+    logging.debug('Details: ' + form_details)
     for e in emails:
       logging.debug('Emails: ' + e)
     for a in amounts:
       logging.debug('Amounts: ' + a)  
-    
-    ##### form content validation #####
 
     form_amount_email_pairs = []
-    for a, e in zip(amounts, emails):
-      if a and e:
-        form_amount_email_pairs.append((float(a), e.strip()))
+    for amount, email in zip(amounts, emails):
+      if amount and email:
+        form_amount_email_pairs.append((float(amount), email.strip()))
 
-    # url must be a-z, 0-9... no spaces or characters
-    if not url.isalnum():
-      logging.debug('FormValidator: URL failed.')
-      self.error(500)
-      return
-      # TODO: user-facing notification in this case
+    ##### create new bill #####
+
+    new_bill = spmnewbill.NewBill(
+      name = form_name,
+      description = form_description,
+      amount_email_pairs = form_amount_email_pairs,
+    )
+    if new_bill.DataValidated():
+      if new_bill.CommitAndSend(spm_loggedin_user = spm_loggedin_user):
+        # note that there's a datastore delay so we can't redirect immediately to
+        # the pay page, so instead redirect to the seller view page
+        self.redirect('/everything')  
+      else:
+        # commit and send failed
+        self.redirect('/error')
     else:
-      newcr_spm_name = str(url).lower()
-
-    # simple validation, doesn't catch everything but works for the 99% use case
-    _EMAIL_REGEX = '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$'
-
-    # needs to be numbers or decimals
-    for form_amount, form_email in form_amount_email_pairs:
-      if not form_amount:
-        logging.debug('FormValidator: Amount failed')
-        self.error(500)
-        return
-      if not form_email:
-        logging.debug('FormValidator: Email address empty')
-        self.error(500)
-        return
-      else:
-        if not re.search(_EMAIL_REGEX, form_email):
-          logging.debug('FormValidator: Email address failed regex: ' + form_email)
-          self.error(500)
-          return
-      
-    ##### create records and checkout urls for this #####
-    
-    # reserve id for this
-    new_bill = spmnewbill.NewBill()
-    reserved_url_serial = new_bill.ReserveNextSerial(newcr_spm_name)
-
-    item_count = 0
-    for newcr_amount, email in form_amount_email_pairs:
-
-      new_pr = spmdb.PurchaseRecord(
-        parent = MakeAncestorFromSPMUser(spm_loggedin_user),
-        SPMUser_seller = spm_loggedin_user.key()
-      )
-      new_pr.spm_name = newcr_spm_name
-      new_pr.spm_serial = reserved_url_serial
-      new_pr.spm_transaction = item_count
-      new_pr.amount = '%0.2f' % float(newcr_amount)
-      new_pr.currency = 'USD'
-      new_pr.description = details
-      new_pr.date_sent = datetime.utcnow()
-      new_pr.date_latest = new_pr.date_sent
-      new_pr.sent_to_email = email
-      new_pr.SPMUser_sentto = user_manager.GetSPMUserByEmail(email)
-
-      spmid = BuildSPMID(
-        name = new_pr.spm_name,
-        serial = new_pr.spm_serial,
-        transaction = new_pr.spm_transaction,
-      )
-  
-      checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
-      checkout_payurl = checkout.GetPaymentUrl(
-        spm_full_id = spmid,
-        description = new_pr.spm_name + ' (' + new_pr.description + ')',
-        amount = new_pr.amount,
-        currency = new_pr.currency,
-      )
-      new_pr.checkout_payurl = checkout_payurl
-
-      if not checkout_payurl:
-        logging.critical('New invoice: GetPaymentUrl failed')
-        self.error(500)
-        return None
-        # TODO: retry, better error handling, and user-facing notification in this case
-    
-      # send email
-      if spm_loggedin_user.name:
-        sender_name = spm_loggedin_user.name
-      else:
-        sender_name = ''
-      emailer = spmemail.SPMEmailManager(
-        from_name = sender_name,
-        # have to use logged-in users email address or appengine won't send
-        from_email = spm_loggedin_user.google_account.email(),
-      )
-      spm_to_user = user_manager.GetSPMUserByEmail(email)
-      emailer.SendEmail(
-        to_name = spm_to_user.name,
-        to_email = email,
-        spm_for = newcr_spm_name,
-        spm_url = BuildSPMURL(
-          name = new_pr.spm_name,
-          serial = new_pr.spm_serial,
-        ),
-        pay_url = checkout_payurl,
-        description = details,
-        amount = new_pr.amount, 
-      )
-
-      # commit record - do this last in case anything above fails
-      new_pr.put()
-
-      # iterate item count for next thing
-      item_count += 1
+      # validation failed
+      self.redirect('/error')
     
     return True
+
 
   def GetAll(self, *args):
   

@@ -8,7 +8,6 @@ import time
 import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
 import os # for setting timezone
 import pprint # for debugging print out
-import re # for matching email addresses
 
 from google.appengine.ext import db
 from google.appengine.api import taskqueue # enqueuing new sync requests
@@ -261,6 +260,35 @@ class AppPage_SignoutRedirect(webapp.RequestHandler):
 class AppPage_SigninRedirect(webapp.RequestHandler):
   def get(self):
     self.redirect(users.create_login_url('/'))
+
+
+class AppPage_Error(webapp.RequestHandler):
+
+  def __init__(self):
+    self._TITLE = SPM
+
+  def get(self):
+    """Returns error page."""
+
+    ##### identity #####
+
+    user_manager = spmuser.UserManager()
+    spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
+
+    ##### preprocessing before rendering page #####
+
+    page = spmbuilder.NewPage(
+      title = self._TITLE,
+      user = spm_loggedin_user,
+      useragent = self.request.headers.get('user_agent'),
+      uideb = self.request.get('uideb'),
+      nav_code = None,
+    )
+
+    page.AppendNavbar()
+    page.AppendLine('<br/><br/>Well, that wasn\'t supposed to happen.')
+
+    self.response.out.write(page.Render())
 
 
 class AppPage_Default(webapp.RequestHandler):
@@ -527,7 +555,7 @@ class AppPage_Send(webapp.RequestHandler):
 
     ### render page ###
 
-    _PAGE_CONTENT = \
+    _HACKY_FORM_CONTENT = \
 """<form action="%(posturl)s" method="post">
   <div>Hey!  You owe me money.</div>
   <div>So, pay me for <input type="text" name="url" value=""/> (no spaces or symbols)</div>
@@ -558,7 +586,7 @@ class AppPage_Send(webapp.RequestHandler):
     page.AppendNavbar()
     page.AppendLine('There\'s like, uh, no input validation on this page. You can and will break it if you\'re dumb.')
 
-    page.AppendLine(_PAGE_CONTENT % {'posturl': self.request.path})
+    page.AppendLine(_HACKY_FORM_CONTENT % {'posturl': self.request.path})
     self.response.out.write(page.Render())
 
 
@@ -570,15 +598,18 @@ class AppPage_Send(webapp.RequestHandler):
     user_manager = spmuser.UserManager()
     spm_loggedin_user = user_manager.GetSPMUser(sudo_email = self.request.get('sudo'))
 
-    if not spm_loggedin_user.checkout_verified:
+    if not spm_loggedin_user:
+      self.redirect('/')
+      return
+    elif not spm_loggedin_user.checkout_verified:
       self.redirect('/')
       return
 
+    ##### parse form #####
     # TODO: convert to JS/JSON with client side validation logic too
 
-    ##### form content validation #####
-
-    form_url = cgi.escape(self.request.get('url'))
+    form_name = cgi.escape(self.request.get('url'))
+    # form_serial is automatically assigned
     form_description = cgi.escape(self.request.get('description'))
 
     form_amount_email_pairs = []
@@ -588,122 +619,24 @@ class AppPage_Send(webapp.RequestHandler):
       if cur_amount and cur_email:
         form_amount_email_pairs.append((float(cur_amount), cur_email.strip()))
 
-    # url must be a-z, 0-9... no spaces or characters
-    if not form_url.isalnum():
-      logging.debug('FormValidator: URL failed.')
-      return
-      # TODO: user-facing notification in this case
-    else:
-      newcr_spm_name = str(form_url).lower()
+    ##### create new bill #####
 
-    # don't give a shit what's here, if it's not present, just copy the
-    # form_description there instead
-    if not form_description:
-      newcr_description = form_url
-    else:
-      newcr_description = str(form_description)
-
-    # simple validation, doesn't catch everything but works for the 99% use case
-    _EMAIL_REGEX = '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$'
-
-    # needs to be numbers or decimals
-    for form_amount, form_email in form_amount_email_pairs:
-
-      if not form_amount:
-        logging.debug('FormValidator: Amount failed')
-        return
-        # TODO: user-facing notification in this case
-
-      if not form_email:
-        logging.debug('FormValidator: Email address empty')
-        return
-        # TODO: user-facing notification in this case
+    new_bill = spmnewbill.NewBill(
+      name = form_name,
+      description = form_description,
+      amount_email_pairs = form_amount_email_pairs,
+    )
+    if new_bill.DataValidated():
+      if new_bill.CommitAndSend(spm_loggedin_user = spm_loggedin_user):
+        # note that there's a datastore delay so we can't redirect immediately to
+        # the pay page, so instead redirect to the seller view page
+        self.redirect('/everything')  
       else:
-        if not re.search(_EMAIL_REGEX, form_email):
-          logging.debug('FormValidator: Email address failed regex: ' + email)
-          return
-
-    ##### create records and checkout urls for this #####
-    
-    # reserve id for this
-    new_bill = spmnewbill.NewBill()
-    reserved_url_serial = new_bill.ReserveNextSerial(newcr_spm_name)
-
-    item_count = 0
-    for newcr_amount, email in form_amount_email_pairs:
-
-      new_pr = spmdb.PurchaseRecord(
-        parent = MakeAncestorFromSPMUser(spm_loggedin_user),
-        SPMUser_seller = spm_loggedin_user.key()
-      )
-      new_pr.spm_name = newcr_spm_name
-      new_pr.spm_serial = reserved_url_serial
-      new_pr.spm_transaction = item_count
-      new_pr.amount = '%0.2f' % float(newcr_amount)
-      new_pr.currency = 'USD'
-      new_pr.description = newcr_description
-      new_pr.date_sent = datetime.utcnow()
-      new_pr.date_latest = new_pr.date_sent
-      new_pr.sent_to_email = email
-      new_pr.SPMUser_sentto = user_manager.GetSPMUserByEmail(email)
-
-      spmid = BuildSPMID(
-        name = new_pr.spm_name,
-        serial = new_pr.spm_serial,
-        transaction = new_pr.spm_transaction,
-      )
-  
-      checkout = spmcheckout.CheckoutSellerIntegration(spm_loggedin_user)
-      checkout_payurl = checkout.GetPaymentUrl(
-        spm_full_id = spmid,
-        description = new_pr.spm_name + ' (' + new_pr.description + ')',
-        amount = new_pr.amount,
-        currency = new_pr.currency,
-        # if you change any of the above fields, make sure to change the
-        # checkout sync code appropriately as well, as it checks all four
-      )
-      new_pr.checkout_payurl = checkout_payurl
-
-      if not checkout_payurl:
-        logging.critical('New invoice: GetPaymentUrl failed')
-        return None
-        # TODO: retry, better error handling, and user-facing notification in this case
-    
-      # send email
-      if spm_loggedin_user.name:
-        sender_name = spm_loggedin_user.name
-      else:
-        sender_name = ''
-      emailer = spmemail.SPMEmailManager(
-        from_name = sender_name,
-        # have to use logged-in users email address or appengine won't send
-        from_email = spm_loggedin_user.google_account.email(),
-      )
-      spm_to_user = user_manager.GetSPMUserByEmail(email)
-      emailer.SendEmail(
-        to_name = spm_to_user.name,
-        to_email = email,
-        spm_for = newcr_spm_name,
-        spm_url = BuildSPMURL(
-          name = new_pr.spm_name,
-          serial = new_pr.spm_serial,
-        ),
-        pay_url = checkout_payurl,
-        description = newcr_description,
-        amount = new_pr.amount, 
-      )
-
-      # commit record - do this last in case anything above fails
-      new_pr.put()
-
-      # iterate item count for next thing
-      item_count += 1
-
-    ##### redirect #####
-
-    # note that there's a datastore delay so we can't redirect immediately to
-    # the pay page, so instead redirect to the seller view page
-    self.redirect('/everything')
+        # commit and send failed
+        self.redirect('/error')
+    else:
+      # validation failed
+      self.redirect('/error')
 
 
 ################################################################################
@@ -713,6 +646,7 @@ application = webapp.WSGIApplication([
   # User-facing
   ('/admin.*', AppPage_Admin),
   ('/debug.*', AppPage_Debug),
+  ('/error', AppPage_Error),
   ('/now', AppPage_Send),
   ('/everything', AppPage_PaymentHistory),
   ('/signout.*', AppPage_SignoutRedirect),
