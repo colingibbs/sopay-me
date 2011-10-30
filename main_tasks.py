@@ -1,23 +1,18 @@
-# TODO: these imports are before the main_user, main_rpc, main_tasks split.  they all
-# may or may not be needed, but I haven't bothered to check yet - zpm
+import logging          # common include for all files
+from spmutil import *   # common include for all files
 
-import calendar
-import cgi # parsing form input from /now
+import time   # for setting timezone in main()
+import os     # for setting timezone in main()
+
 from datetime import datetime, timedelta
-import time
-import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
-import os # for setting timezone
 
 from google.appengine.ext import db
 from google.appengine.api import taskqueue # for checkout sync quests
-from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-# local imports
-import spmdb
+import spmdb # for writing daily logs
 import spmcheckout
-from spmutil import *
 
 
 ################################################################################

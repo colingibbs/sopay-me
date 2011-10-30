@@ -1,3 +1,9 @@
+import logging          # common include for all files
+from spmutil import *   # common include for all files
+
+import time   # for setting timezone in main()
+import os     # for setting timezone in main()
+
 from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.ext import webapp
@@ -5,11 +11,8 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 
 from django.utils import simplejson # for encoding responses
 import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
-import os # for setting timezone
-import time
-import spmnewbill   # used in send now class
+import spmnewbill # used in send now class
 import spmuser
-from spmutil import *
 
 
 ################################################################################

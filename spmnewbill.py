@@ -1,13 +1,14 @@
-import logging # (fyi levels are debug, info, warning, error, critical) 
-from google.appengine.ext import db # for direct serial reservation
-import spmdb # for creating new records
+import logging
+from spmutil import *
+
+from google.appengine.ext import db # run transactions
+import spmdb # for creating new records, incrementing countstore
 import spmcheckout # for creating checkout urls when creating new records
 import spmuser # for sending emails
 from datetime import datetime # recording transaction time
 import re # for matching email addresses
 import spmemail # for sending emails
 
-from spmutil import *
 
 
 ################################################################################

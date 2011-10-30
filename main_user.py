@@ -1,13 +1,8 @@
-# TODO: these imports are before the main_user, main_rpc, main_tasks split.  they all
-# may or may not be needed, but I haven't bothered to check yet - zpm
+import logging          # common include for all files
+from spmutil import *   # common include for all files
 
-import calendar
-import cgi # used for form encoding
-from datetime import datetime, timedelta
-import time
-import logging # DEBUG, INFO, WARNING, ERROR, CRITICAL
-import os # for setting timezone
-import pprint # for debugging print out
+import time   # for setting timezone in main()
+import os     # for setting timezone in main()
 
 from google.appengine.ext import db
 from google.appengine.api import taskqueue # enqueuing new sync requests
@@ -15,14 +10,17 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
-# local imports
-import spmdb
-import spmemail
-import spmcheckout
-import spmbuilder   # page building class
 import spmnewbill   # used in send now class
+
+# TODO: below imports are before the main_user, main_rpc, main_tasks split.  they all
+# may or may not be needed, but I haven't bothered to check yet - zpm
+
+import cgi # used for form encoding in /now
+from datetime import datetime, timedelta
+import pprint # for printing admin pages (ascii)
+import spmcheckout
+import spmbuilder # page building class
 import spmuser
-from spmutil import *
 
 
 ################################################################################
