@@ -331,7 +331,7 @@ class AppPage_PaymentHistory(webapp.RequestHandler):
   """Checkout account required."""
 
   def __init__(self):
-    self._TITLE = SPM + ' everything'
+    self._TITLE = SPM
 
 
   def get(self):
