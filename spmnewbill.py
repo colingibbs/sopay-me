@@ -171,7 +171,8 @@ class NewBill():
         ),
         pay_url = checkout_payurl,
         description = self.description,
-        amount = new_pr.amount, 
+        amount = new_pr.amount,
+        reminder = false, 
       )
 
       # commit record - do this last in case anything above fails

@@ -238,6 +238,36 @@ class TaskPage_DailyLogsCron(webapp.RequestHandler):
 
     return logs_record
 
+class TaskPage_Reminders(webapp.RequestHandler):
+
+  def post(self):
+	
+
+class TaskPage_Reminders(webapp.RequestHandler):
+  """sends reminder emails"""
+  def get(self):
+    
+    logging.debug('Task SyncCron starting')
+
+    #not sure if UTC is used when inserting records into the db.  need to ask zpm
+    right_now = datetime.utcnow() 
+
+    #number of days before we start sending reminders
+    grace_period = 5;
+
+    #grab all of the unpaid purchases that were sent before the grace period
+	#the last line is just so I don't spam people while testing
+    billlist = db.GqlQuery(
+      """SELECT * FROM PurchaseRecord WHERE date_paid = null 
+	  AND date_sent < (right_now-timedelta(days=grace_period))
+	  AND sent_to_email = 'cgibbs.test@gmail.com'"""
+    )
+
+    for bill in billlist
+      taskqueue.add(queue_name='reminderqueue', url='/task/sendreminders', params={
+        'bill_key': bill.key(),
+      })
+
 
 ################################################################################
 
@@ -247,6 +277,8 @@ application = webapp.WSGIApplication([
   ('/task/checkout', TaskPage_SyncCheckout),
   ('/task/synccron', TaskPage_SyncCron),
   ('/task/logscron', TaskPage_DailyLogsCron),
+  ('/task/reminders', TaskPage_Reminders),
+  ('/task/sendreminders', TaskPage_SendReminders),
 ],debug=True)
 
 

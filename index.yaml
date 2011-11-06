@@ -13,3 +13,9 @@ indexes:
   - name: SPMUser_sentto
   - name: date_latest
     direction: desc
+    
+# needed for reminder emails
+ - kind: PurchaseRecord
+  properties:
+  - name: date_paid
+  - name: date_sent
