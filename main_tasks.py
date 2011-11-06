@@ -245,16 +245,17 @@ class TaskPage_SendReminders(webapp.RequestHandler):
 
   def post(self):
     bill_key = self.request.get('bill_key')
-
     bill = db.get(bill_key)
     sent_to_user = bill.SPMUser_sentto
     seller = bill.SPMUser_seller
+    
+    #this is the from-email for the reminder.  App engine requires it to be an admin
+    #TODO - create a no-reply@sopay.me email address and use it here
+    sender = 'gibbs.colin.m@gmail.com'
 
-    # copied/pasted from spmnewbill.py - need to modify
     emailer = spmemail.SPMEmailManager(
       from_name = seller.name,
-      # have to use logged-in users email address or appengine won't send
-      from_email = 'gibbs.colin.m@gmail.com'#seller.email,
+      from_email = sender,
     )
 
     emailer.SendEmail(
@@ -273,11 +274,9 @@ class TaskPage_Reminders(webapp.RequestHandler):
   """Gets the set of purchases that need reminders
   Admin only access (app.yaml)"""
 
-
   def get(self): 
     logging.debug('Task Reminders starting')
 
-    #not sure if UTC is used when inserting records into the db.  need to ask zpm
     right_now = datetime.utcnow() 
 
     #number of days before we start sending reminders
