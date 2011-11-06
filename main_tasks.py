@@ -284,11 +284,11 @@ class TaskPage_Reminders(webapp.RequestHandler):
     start_date = right_now + timedelta(days=grace_period)
 
     #grab all of the unpaid purchases that were sent before the grace period
-    #the last line is just so I don't spam people while testing
+    #the last line is do avoid spamming a couple random people who didn't pay for stuff back in August
     bill_list = db.GqlQuery(
       """SELECT * FROM PurchaseRecord WHERE date_paid = null 
       AND date_sent < :start
-      AND sent_to_email = 'cgibbs.test@gmail.com'""", start=start_date,
+      AND date_sent > DATE(2010,10,1)""", start=start_date,
     )
 
     for bill in bill_list:
