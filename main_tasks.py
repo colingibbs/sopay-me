@@ -13,6 +13,7 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 
 import spmdb # for writing daily logs
 import spmcheckout
+import spmemail # for sending emails
 
 
 ################################################################################
@@ -238,32 +239,60 @@ class TaskPage_DailyLogsCron(webapp.RequestHandler):
 
     return logs_record
 
-class TaskPage_Reminders(webapp.RequestHandler):
+class TaskPage_SendReminders(webapp.RequestHandler):
+  """Sends reminder emails for all unpaid purchases
+  Admin only access (app.yaml)"""
 
   def post(self):
-	
+    bill_key = self.request.get('bill_key')
+
+    bill = db.get(bill_key)
+    sent_to_user = bill.SPMUser_sentto
+    seller = bill.SPMUser_seller
+
+    # copied/pasted from spmnewbill.py - need to modify
+    emailer = spmemail.SPMEmailManager(
+      from_name = seller.name,
+      # have to use logged-in users email address or appengine won't send
+      from_email = 'gibbs.colin.m@gmail.com'#seller.email,
+    )
+
+    emailer.SendEmail(
+      to_name = sent_to_user.name,
+      to_email = bill.sent_to_email,
+      spm_for = bill.spm_name,
+      spm_url = BuildSPMURL(bill.spm_name, bill.spm_serial),
+      pay_url = bill.checkout_payurl,
+      description = bill.description,
+      amount = bill.amount,
+      reminder = True, 
+    )
+    logging.debug('Sent reminder email for purchase record[' + bill_key + ']')
 
 class TaskPage_Reminders(webapp.RequestHandler):
-  """sends reminder emails"""
-  def get(self):
-    
-    logging.debug('Task SyncCron starting')
+  """Gets the set of purchases that need reminders
+  Admin only access (app.yaml)"""
+
+
+  def get(self): 
+    logging.debug('Task Reminders starting')
 
     #not sure if UTC is used when inserting records into the db.  need to ask zpm
     right_now = datetime.utcnow() 
 
     #number of days before we start sending reminders
-    grace_period = 5;
+    grace_period = -5
+    start_date = right_now + timedelta(days=grace_period)
 
     #grab all of the unpaid purchases that were sent before the grace period
-	#the last line is just so I don't spam people while testing
-    billlist = db.GqlQuery(
+    #the last line is just so I don't spam people while testing
+    bill_list = db.GqlQuery(
       """SELECT * FROM PurchaseRecord WHERE date_paid = null 
-	  AND date_sent < (right_now-timedelta(days=grace_period))
-	  AND sent_to_email = 'cgibbs.test@gmail.com'"""
+      AND date_sent < :start
+      AND sent_to_email = 'cgibbs.test@gmail.com'""", start=start_date,
     )
 
-    for bill in billlist
+    for bill in bill_list:
       taskqueue.add(queue_name='reminderqueue', url='/task/sendreminders', params={
         'bill_key': bill.key(),
       })

@@ -10,4 +10,4 @@ cron:
 
 - description: daily reminder emails
   url: /task/reminders
-  schedule: every day 02:00
+  schedule: every day 02:00 # UTC
