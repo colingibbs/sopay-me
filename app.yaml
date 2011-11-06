@@ -2,20 +2,33 @@ application: sopay-me
 # When testing, use version: 'id-test'.  To publish, change to 'live' but do not
 # sumbit back to source control with 'version: live'. Source control should
 # always be 'test' to prevent accidentally deploying tests to live traffic.
-version: live
+version: cgibbs.test
 runtime: python
 api_version: 1
 
 default_expiration: 0
 
 handlers:
+
 - url: /static
   static_dir: static
+
+# Background task queues
 - url: /task/.*
-  script: main.py
+  script: main_tasks.py
   login: admin
+
+# API
+- url: /rpc.*
+  script: main_rpc.py
+
+# Admin/background functionality
 - url: /admin.*
-  script: main.py
+  script: main_admin.py
   login: admin
+- url: /debug.*
+  script: main_admin.py
+
+# Web UI functionliaty
 - url: /.*
-  script: main.py
+  script: main_user.py

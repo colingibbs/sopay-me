@@ -13,3 +13,16 @@ indexes:
   - name: SPMUser_sentto
   - name: date_latest
     direction: desc
+    
+# needed for testing
+- kind: PurchaseRecord
+  properties:
+  - name: date_paid
+  - name: sent_to_email
+  - name: date_sent
+
+# needed for sending reminders  
+- kind: PurchaseRecord
+  properties:
+  - name: date_paid
+  - name: date_sent

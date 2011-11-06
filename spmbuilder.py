@@ -10,10 +10,11 @@ from google.appengine.ext.webapp import template
 
 class NewPage():
 
-  def __init__(self, title, user, useragent, uideb):
+  def __init__(self, title, user, useragent, uideb, nav_code):
     """Initializes a new page with useragent (to detect mobile or not)."""
 
-    # set is_mobile based on useragent.  TODO: expand this to be more intelligent
+    # set is_mobile based on useragent.
+    # TODO: expand this to be more intelligent
     if 'android' in useragent.lower() or 'iphone' in useragent.lower():
       self.is_mobile = True
     else:
@@ -24,7 +25,10 @@ class NewPage():
       self.obfuscate_pii = False
     else:
       self.obfuscate_pii = True
-    
+
+    # set nav code (for nav buttons)
+    self.nav_code = nav_code
+
     ### uideb controls ####
     # m: force mobile view
     # o: force email obfuscation
@@ -37,12 +41,17 @@ class NewPage():
 
     ### set variables ###
     
+    if user:
+      self.user_can_sell = user.checkout_verified
+    else:
+      self.user_can_sell = False
+
     self.title = title
     self.logged_in_text = '<a href="/signin">sign in</a>'
     if user:
       if user.google_account:
         if user.google_account.email():
-          self.logged_in_text = user.google_account.email()
+          self.logged_in_text = user.google_account.email() + ' (<a href="/signin">switch</a>)'
 
     # initialize the buffer
     self.pagebuffer = []
@@ -241,6 +250,49 @@ class NewPage():
     }
 
     self.pagebuffer.append(template.render(path, template_values))
+
+
+  def AppendNavbar(self):
+    """Generates the html for 'button navs'."""
+    
+    button_active_class = """class='button button-active'"""
+    button_disabled_class = """class='button button-disabled'"""
+    button_class = """class='button'"""
+            
+    button_you_text = 'You Pay Them'
+    if self.nav_code == 'NAV_YOUPAY':
+      button_you = '<span ' + button_active_class + '>' + button_you_text + '</span>'
+    else:
+      button_you = '<span ' + button_class + '><a href=\'/\'>' + button_you_text + '</a></span>'
+      
+    button_they_text = 'They Pay You'
+    if self.nav_code == 'NAV_THEYPAY':
+      button_they = '<span ' + button_active_class + '>' + button_they_text + '</span>'
+    else:
+      if self.user_can_sell:
+        button_they = '<span ' + button_class + '><a href=\'/everything\'>' + button_they_text + '</a></span>'
+      else:
+        button_they = '<span ' + button_disabled_class + '>' + button_they_text + '</span>'
+
+    button_send_text = 'Send Now'
+    if self.nav_code == 'NAV_SENDNOW':
+      button_send = '<span ' + button_active_class + '>' + button_send_text + '</span>'
+    else:
+      if self.user_can_sell:
+        button_send = '<span ' + button_class + '><a href=\'/now\'>' + button_send_text + '</a></span>'
+      else:
+        button_send = '<span ' + button_disabled_class + '>' + button_send_text + '</span>'
+
+    button_settings_text = 'Settings'
+    #if self.nav_code == 'SETTINGS':
+    button_settings = '<span ' + button_disabled_class + '>' + button_settings_text + '</span>'
+
+    separator = '&nbsp;&nbsp;|&nbsp;&nbsp;'
+    navbar = ('<div class="line">' + button_you + separator + button_they +
+        separator + button_send + separator + button_settings + '</div>')
+
+    self.pagebuffer.append(navbar)
+    self.AppendLineShaded('')
 
 
   def AppendLine(self, message):

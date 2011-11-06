@@ -7,3 +7,7 @@ cron:
 - description: daily logs cron job
   url: /task/logscron
   schedule: every day 02:00 # UTC
+
+- description: daily reminder emails
+  url: /task/reminders
+  schedule: every day 02:00 # UTC
